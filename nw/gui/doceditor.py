@@ -50,12 +50,10 @@ from PyQt5.QtWidgets import (
 )
 
 from nw.core import NWDoc, NWSpellSimple, countWords
-from nw.gui.dochighlight import GuiDocHighlighter
+from nw.enum import nwAlert, nwDocAction, nwDocInsert, nwItemClass
 from nw.common import transferCase
-from nw.constants import (
-    nwConst, nwAlert, nwUnicode, nwDocAction, nwDocInsert, nwItemClass,
-    nwKeyWords
-)
+from nw.constants import nwConst, trConst, nwKeyWords, nwLabels, nwUnicode
+from nw.gui.dochighlight import GuiDocHighlighter
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +89,19 @@ class GuiDocEditor(QTextEdit):
         self.wordCount  = 0     # Word count
         self.paraCount  = 0     # Paragraph count
         self.lastEdit   = 0     # Time stamp of last edit
+        self.lastActive = 0     # Time stamp of last activity
         self.lastFind   = None  # Position of the last found search word
         self.bigDoc     = False # Flag for very large document size
         self.doReplace  = False # Switch to temporarily disable auto-replace
         self.queuePos   = None  # Used for delayed change of cursor position
 
         # Typography
-        self.typDQOpen  = self.mainConf.fmtDoubleQuotes[0]
-        self.typDQClose = self.mainConf.fmtDoubleQuotes[1]
-        self.typSQOpen  = self.mainConf.fmtSingleQuotes[0]
-        self.typSQClose = self.mainConf.fmtSingleQuotes[1]
+        self.typDQOpen  = '"'
+        self.typDQClose = '"'
+        self.typSQOpen  = "'"
+        self.typSQClose = "'"
+        self.typPadChar = " "
+        self.addPadding = False
 
         # Core Elements and Signals
         self.qDocument = self.document()
@@ -169,15 +170,16 @@ class GuiDocEditor(QTextEdit):
         self.clear()
         self.wcTimer.stop()
 
-        self.theHandle = None
-        self.charCount = 0
-        self.wordCount = 0
-        self.paraCount = 0
-        self.lastEdit  = 0
-        self.lastFind  = None
-        self.bigDoc    = False
-        self.doReplace = False
-        self.queuePos  = None
+        self.theHandle  = None
+        self.charCount  = 0
+        self.wordCount  = 0
+        self.paraCount  = 0
+        self.lastEdit   = 0
+        self.lastActive = 0
+        self.lastFind   = None
+        self.bigDoc     = False
+        self.doReplace  = False
+        self.queuePos   = None
 
         self.setDocumentChanged(False)
         self.docHeader.setTitleFromHandle(self.theHandle)
@@ -195,6 +197,17 @@ class GuiDocEditor(QTextEdit):
         self.nonWord += "".join(self.mainConf.fmtDoubleQuotes)
         self.nonWord += "".join(self.mainConf.fmtSingleQuotes)
 
+        # Typography
+        if self.mainConf.fmtPadThin:
+            self.typPadChar = nwUnicode.U_THNBSP
+        else:
+            self.typPadChar = nwUnicode.U_NBSP
+
+        self.typSQOpen  = self.mainConf.fmtSingleQuotes[0]
+        self.typSQClose = self.mainConf.fmtSingleQuotes[1]
+        self.typDQOpen  = self.mainConf.fmtDoubleQuotes[0]
+        self.typDQClose = self.mainConf.fmtDoubleQuotes[1]
+
         # Reload spell check and dictionaries
         self._setupSpellChecking()
         self.setDictionaries()
@@ -204,6 +217,7 @@ class GuiDocEditor(QTextEdit):
         if self.mainConf.textFont is None:
             # If none is defined, set the default back to config
             self.mainConf.textFont = self.qDocument.defaultFont().family()
+
         theFont.setFamily(self.mainConf.textFont)
         theFont.setPointSize(self.mainConf.textSize)
         self.setFont(theFont)
@@ -291,11 +305,17 @@ class GuiDocEditor(QTextEdit):
 
         docSize = len(theDoc)
         if docSize > nwConst.MAX_DOCSIZE:
-            self.theParent.makeAlert((
-                "The document you are trying to open is too big. "
-                "The document size is %.2f\u202fMB. "
-                "The maximum size allowed is %.2f\u202fMB."
-            ) % (docSize/1.0e6, nwConst.MAX_DOCSIZE/1.0e6), nwAlert.ERROR)
+            self.theParent.makeAlert(
+                self.tr(
+                    "The document you are trying to open is too big. "
+                    "The document size is {0} MB. "
+                    "The maximum size allowed is {1} MB."
+                ).format(
+                    f"{docSize/1.0e6:.2f}",
+                    f"{nwConst.MAX_DOCSIZE/1.0e6:.2f}"
+                ),
+                nwAlert.ERROR
+            )
             self.clearEditor()
             return False
 
@@ -319,6 +339,7 @@ class GuiDocEditor(QTextEdit):
         logger.debug("Document highlighted in %.3f ms" % (1000*(afTime-bfTime)))
 
         self.lastEdit = time()
+        self.lastActive = time()
         self._runCounter()
         self.wcTimer.start()
         self.theHandle = tHandle
@@ -377,11 +398,17 @@ class GuiDocEditor(QTextEdit):
         """
         docSize = len(theText)
         if docSize > nwConst.MAX_DOCSIZE:
-            self.theParent.makeAlert((
-                "The text you are trying to add is too big. "
-                "The text size is %.2f\u202fMB. "
-                "The maximum size allowed is %.2f\u202fMB."
-            ) % (docSize/1.0e6, nwConst.MAX_DOCSIZE/1.0e6), nwAlert.ERROR)
+            self.theParent.makeAlert(
+                self.tr(
+                    "The text you are trying to add is too big. "
+                    "The text size is {0} MB. "
+                    "The maximum size allowed is {1} MB."
+                ).format(
+                    f"{docSize/1.0e6:.2f}",
+                    f"{nwConst.MAX_DOCSIZE/1.0e6:.2f}"
+                ),
+                nwAlert.ERROR
+            )
             return False
 
         qApp.setOverrideCursor(QCursor(Qt.WaitCursor))
@@ -415,10 +442,20 @@ class GuiDocEditor(QTextEdit):
         self.setDocumentChanged(False)
 
         self.theIndex.scanText(tHandle, docText)
+
         if self._updateHeaders(checkLevel=True):
             self.theParent.requestNovelTreeRefresh()
         else:
             self.theParent.novelView.updateWordCounts(tHandle)
+
+        hLevel = "H0"
+        if self.theHeaders:
+            hLevel = self.theHeaders[0][1]
+
+        if self.theProject.projTree.updateItemLayout(tHandle, hLevel):
+            self.theParent.treeView.setTreeItemValues(tHandle)
+            self.nwDocument.saveDocument(docText)
+            self.docFooter.updateInfo()
 
         return True
 
@@ -555,12 +592,14 @@ class GuiDocEditor(QTextEdit):
         """
         if not isinstance(theLine, int):
             return False
+
         if theLine >= 0:
             theBlock = self.qDocument.findBlockByLineNumber(theLine)
             if theBlock:
                 self.setCursorPosition(theBlock.position())
                 self.docFooter.updateLineCount()
                 logger.verbose("Cursor moved to line %d" % theLine)
+
         return True
 
     ##
@@ -572,17 +611,15 @@ class GuiDocEditor(QTextEdit):
         status bar to show the one actually loaded by the spell checker
         class.
         """
-        if self.theProject.projLang is None:
+        if self.theProject.projSpell is None:
             theLang = self.mainConf.spellLanguage
         else:
-            theLang = self.theProject.projLang
+            theLang = self.theProject.projSpell
 
         self.theDict.setLanguage(theLang, self.theProject.projDict)
+        theTag, theProvider = self.theDict.describeDict()
 
-        aLang, aName = self.theDict.describeDict()
-        self.theParent.statusBar.setLanguage(
-            aLang, "%s [%s]" % (self.mainConf.spellTool.title(), aName.title())
-        )
+        self.theParent.statusBar.setLanguage(theLang, theProvider)
 
         if not self.bigDoc:
             self.spellCheckDocument()
@@ -628,10 +665,8 @@ class GuiDocEditor(QTextEdit):
                 self.hLight.rehighlight()
             qApp.restoreOverrideCursor()
             afTime = time()
-            logger.debug(
-                "Document highlighted in %.3f ms" % (1000*(afTime-bfTime))
-            )
-            self.theParent.statusBar.showMessage("Spell check complete")
+            logger.debug("Document highlighted in %.3f ms" % (1000*(afTime-bfTime)))
+            self.theParent.statusBar.showMessage(self.tr("Spell check complete"))
 
         return True
 
@@ -676,16 +711,6 @@ class GuiDocEditor(QTextEdit):
             self._makeSelection(QTextCursor.Document)
         elif theAction == nwDocAction.SEL_PARA:
             self._makeSelection(QTextCursor.BlockUnderCursor)
-        elif theAction == nwDocAction.FIND:
-            self._beginSearch()
-        elif theAction == nwDocAction.REPLACE:
-            self._beginReplace()
-        elif theAction == nwDocAction.GO_NEXT:
-            self._findNext()
-        elif theAction == nwDocAction.GO_PREV:
-            self._findNext(isBackward=True)
-        elif theAction == nwDocAction.REPL_NEXT:
-            self._replaceNext()
         elif theAction == nwDocAction.BLOCK_H1:
             self._formatBlock(nwDocAction.BLOCK_H1)
         elif theAction == nwDocAction.BLOCK_H2:
@@ -708,6 +733,7 @@ class GuiDocEditor(QTextEdit):
             return False
 
         self._allowAutoReplace(True)
+        self.lastActive = time()
 
         return True
 
@@ -715,6 +741,15 @@ class GuiDocEditor(QTextEdit):
         """Wrapper function to check if the current document is empty.
         """
         return self.qDocument.isEmpty()
+
+    def anyFocus(self):
+        """Check if any widget or child widget has focus.
+        """
+        if self.hasFocus():
+            return True
+        if self.isAncestorOf(qApp.focusWidget()):
+            return True
+        return False
 
     def revealLocation(self):
         """Tell the user where on the file system the file in the editor
@@ -725,14 +760,14 @@ class GuiDocEditor(QTextEdit):
             return False
 
         msgBox = QMessageBox()
-        msgBox.information(self, "File Location", (
-            "File details for the currently open file<br>"
-            "Handle: {handle:s}<br>"
-            "Location: {fileLoc:s}"
-        ).format(
-            handle  = self.theHandle,
-            fileLoc = str(self.nwDocument.getFileLocation())
-        ))
+        msgBox.information(
+            self,
+            self.tr("File Location"),
+            "%s<br>%s" % (
+                self.tr("The currently open file is saved in:"),
+                self.nwDocument.getFileLocation()
+            ),
+        )
 
         return
 
@@ -781,7 +816,7 @@ class GuiDocEditor(QTextEdit):
         theCursor = self.textCursor()
         theBlock = theCursor.block()
         if not theBlock.isValid():
-            logger.error("Filed to insert keyword '%s'" % keyWord)
+            logger.error("Failed to insert keyword '%s'" % keyWord)
             return False
 
         theCursor.beginEditBlock()
@@ -809,7 +844,7 @@ class GuiDocEditor(QTextEdit):
         if self.docSearch.isVisible():
             self.docSearch.closeSearch()
         else:
-            self._beginSearch()
+            self.beginSearch()
         return
 
     ##
@@ -825,6 +860,7 @@ class GuiDocEditor(QTextEdit):
           * The undo/redo/select all sequences bypasses the docAction
             pathway from the menu, so we redirect them back from here.
         """
+        self.lastActive = time()
         isReturn  = keyEvent.key() == Qt.Key_Return
         isReturn |= keyEvent.key() == Qt.Key_Enter
         if isReturn and self.docSearch.anyFocus():
@@ -914,10 +950,15 @@ class GuiDocEditor(QTextEdit):
         self.lastFind = None
 
         if self.qDocument.characterCount() > nwConst.MAX_DOCSIZE:
-            self.theParent.makeAlert((
-                "The document has grown too big and you cannot add more text to it. "
-                "The maximum size of a single novelWriter document is %.2f\u202fMB."
-            ) % (nwConst.MAX_DOCSIZE/1.0e6), nwAlert.ERROR)
+            self.theParent.makeAlert(
+                self.tr(
+                    "The document has grown too big and you cannot add more text to it. "
+                    "The maximum size of a single novelWriter document is {0} MB."
+                ).format(
+                    f"{nwConst.MAX_DOCSIZE/1.0e6:.2f}"
+                ),
+                nwAlert.ERROR
+            )
             self.undo()
             return
 
@@ -947,21 +988,21 @@ class GuiDocEditor(QTextEdit):
         # ===========================
 
         if self._followTag(theCursor=posCursor, loadTag=False):
-            mnuTag = QAction("Follow Tag", mnuContext)
+            mnuTag = QAction(self.tr("Follow Tag"), mnuContext)
             mnuTag.triggered.connect(lambda: self._followTag(theCursor=posCursor))
             mnuContext.addAction(mnuTag)
             mnuContext.addSeparator()
 
         if userSelection:
-            mnuCut = QAction("Cut", mnuContext)
+            mnuCut = QAction(self.tr("Cut"), mnuContext)
             mnuCut.triggered.connect(lambda: self.docAction(nwDocAction.CUT))
             mnuContext.addAction(mnuCut)
 
-            mnuCopy = QAction("Copy", mnuContext)
+            mnuCopy = QAction(self.tr("Copy"), mnuContext)
             mnuCopy.triggered.connect(lambda: self.docAction(nwDocAction.COPY))
             mnuContext.addAction(mnuCopy)
 
-        mnuPaste = QAction("Paste", mnuContext)
+        mnuPaste = QAction(self.tr("Paste"), mnuContext)
         mnuPaste.triggered.connect(lambda: self.docAction(nwDocAction.PASTE))
         mnuContext.addAction(mnuPaste)
 
@@ -970,17 +1011,17 @@ class GuiDocEditor(QTextEdit):
         # Selections
         # ==========
 
-        mnuSelAll = QAction("Select All", mnuContext)
+        mnuSelAll = QAction(self.tr("Select All"), mnuContext)
         mnuSelAll.triggered.connect(lambda: self.docAction(nwDocAction.SEL_ALL))
         mnuContext.addAction(mnuSelAll)
 
-        mnuSelWord = QAction("Select Word", mnuContext)
+        mnuSelWord = QAction(self.tr("Select Word"), mnuContext)
         mnuSelWord.triggered.connect(
             lambda: self._makePosSelection(QTextCursor.WordUnderCursor, thePos)
         )
         mnuContext.addAction(mnuSelWord)
 
-        mnuSelPara = QAction("Select Paragraph", mnuContext)
+        mnuSelPara = QAction(self.tr("Select Paragraph"), mnuContext)
         mnuSelPara.triggered.connect(
             lambda: self._makePosSelection(QTextCursor.BlockUnderCursor, thePos)
         )
@@ -1006,7 +1047,7 @@ class GuiDocEditor(QTextEdit):
 
         if spellCheck:
             mnuContext.addSeparator()
-            mnuHead = QAction("Spelling Suggestion(s)", mnuContext)
+            mnuHead = QAction(self.tr("Spelling Suggestion(s)"), mnuContext)
             mnuContext.addAction(mnuHead)
 
             theSuggest = self.theDict.suggestWords(theWord)[:15]
@@ -1018,11 +1059,13 @@ class GuiDocEditor(QTextEdit):
                     )
                     mnuContext.addAction(mnuWord)
             else:
-                mnuHead = QAction("%s No Suggestions" % nwUnicode.U_ENDASH, mnuContext)
+                mnuHead = QAction(
+                    "%s %s" % (nwUnicode.U_ENDASH, self.tr("No Suggestions")), mnuContext
+                )
                 mnuContext.addAction(mnuHead)
 
             mnuContext.addSeparator()
-            mnuAdd = QAction("Add Word to Dictionary", mnuContext)
+            mnuAdd = QAction(self.tr("Add Word to Dictionary"), mnuContext)
             mnuAdd.triggered.connect(lambda thePos: self._addWord(posCursor))
             mnuContext.addAction(mnuAdd)
 
@@ -1069,7 +1112,7 @@ class GuiDocEditor(QTextEdit):
             logger.verbose("Word counter is busy")
             return
 
-        if time() - self.lastEdit < 5*self.wcInterval:
+        if time() - self.lastEdit < 5 * self.wcInterval:
             logger.verbose("Running word counter")
             self.theParent.threadPool.start(self.wCounter)
 
@@ -1112,15 +1155,149 @@ class GuiDocEditor(QTextEdit):
                 QPointF(theSize.width(), theSize.height()), Qt.FuzzyHit
             )
             if self.queuePos <= thePos:
-                logger.verbose(
-                    "Allowed cursor move to %d <= %d" % (self.queuePos, thePos)
-                )
+                logger.verbose("Allowed cursor move to %d <= %d" % (self.queuePos, thePos))
                 self.setCursorPosition(self.queuePos)
                 self.queuePos = None
             else:
-                logger.verbose(
-                    "Denied cursor move to %d > %d" % (self.queuePos, thePos)
+                logger.verbose("Denied cursor move to %d > %d" % (self.queuePos, thePos))
+        return
+
+    ##
+    #  Search & Replace
+    ##
+
+    def beginSearch(self):
+        """Sets the selected text as the search text for the search bar.
+        """
+        theCursor = self.textCursor()
+        if theCursor.hasSelection():
+            self.docSearch.setSearchText(theCursor.selectedText())
+        else:
+            self.docSearch.setSearchText(None)
+        self.updateDocMargins()
+        return
+
+    def beginReplace(self):
+        """Opens the replace line of the search bar and sets the find
+        text if a selection has been made, and resets the replace text.
+        """
+        theCursor = self.textCursor()
+        if theCursor.hasSelection():
+            self.docSearch.setSearchText(theCursor.selectedText())
+        else:
+            self.docSearch.setSearchText(None)
+        self.docSearch.setReplaceText("")
+        self.updateDocMargins()
+        return
+
+    def findNext(self, goBack=False):
+        """Searches for the next or previous occurrence of the search
+        bar text in the document. Wraps around if not found and loop is
+        enabled, or continues to next file if next file is enabled.
+        """
+        if not self.anyFocus():
+            logger.debug("Editor does not have focus")
+            return False
+
+        if not self.docSearch.isVisible():
+            self.beginSearch()
+            return
+
+        findOpt = QTextDocument.FindFlag(0)
+        if goBack:
+            findOpt |= QTextDocument.FindBackward
+        if self.docSearch.isCaseSense:
+            findOpt |= QTextDocument.FindCaseSensitively
+        if self.docSearch.isWholeWord:
+            findOpt |= QTextDocument.FindWholeWords
+
+        searchFor = self.docSearch.getSearchObject()
+        wasFound  = self.find(searchFor, findOpt)
+        if not wasFound:
+            if self.docSearch.doNextFile and not goBack:
+                self.theParent.openNextDocument(
+                    self.theHandle, wrapAround=self.docSearch.doLoop
                 )
+            elif self.docSearch.doLoop:
+                theCursor = self.textCursor()
+                theCursor.movePosition(
+                    QTextCursor.End if goBack else QTextCursor.Start
+                )
+                self.setTextCursor(theCursor)
+                wasFound = self.find(searchFor, findOpt)
+
+        if wasFound:
+            theCursor = self.textCursor()
+            self.lastFind = (theCursor.selectionStart(), theCursor.selectionEnd())
+
+        return
+
+    def replaceNext(self):
+        """Searches for the next occurrence of the search bar text in
+        the document and replaces it with the replace text. Calls search
+        next automatically when done.
+        """
+        if not self.anyFocus():
+            logger.debug("Editor does not have focus")
+            return False
+
+        if not self.docSearch.isVisible():
+            # The search tool is not active, so we activate it.
+            self.beginSearch()
+            return
+
+        theCursor = self.textCursor()
+        if not theCursor.hasSelection():
+            # We have no text selected at all, so just make this a
+            # regular find next call.
+            self.findNext()
+            return
+
+        if self.lastFind is None and theCursor.hasSelection():
+            # If we have a selection but no search, it may have been the
+            # text we triggered the search with, in which case we search
+            # again from the beginning of that selection to make sure we
+            # have a valid result.
+            sPos = theCursor.selectionStart()
+            theCursor.clearSelection()
+            theCursor.setPosition(sPos)
+            self.setTextCursor(theCursor)
+            self.findNext()
+            theCursor = self.textCursor()
+
+        if self.lastFind is None:
+            # In case the above didn't find a result, we give up here.
+            return
+
+        searchFor = self.docSearch.getSearchText()
+        replWith  = self.docSearch.getReplaceText()
+
+        if self.docSearch.doMatchCap:
+            replWith = transferCase(theCursor.selectedText(), replWith)
+
+        # Make sure the selected text was selected by an actual find
+        # call, and not the user.
+        try:
+            isFind  = self.lastFind[0] == theCursor.selectionStart()
+            isFind &= self.lastFind[1] == theCursor.selectionEnd()
+        except Exception:
+            isFind = False
+
+        if isFind:
+            theCursor.beginEditBlock()
+            theCursor.removeSelectedText()
+            theCursor.insertText(replWith)
+            theCursor.endEditBlock()
+            theCursor.setPosition(theCursor.selectionEnd())
+            self.setTextCursor(theCursor)
+            logger.verbose("Replaced occurrence of '%s' with '%s' on line %d" % (
+                searchFor, replWith, theCursor.blockNumber()
+            ))
+        else:
+            logger.error("The selected text is not a search result, skipping replace")
+
+        self.findNext()
+
         return
 
     ##
@@ -1170,7 +1347,7 @@ class GuiDocEditor(QTextEdit):
         return
 
     def _docAutoReplace(self, theBlock):
-        """Autoreplace text elements based on main configuration.
+        """Auto-replace text elements based on main configuration.
         """
         if not theBlock.isValid():
             return
@@ -1187,43 +1364,62 @@ class GuiDocEditor(QTextEdit):
         theTwo   = theText[thePos-2:thePos]
         theThree = theText[thePos-3:thePos]
 
-        if self.mainConf.doReplaceDQuote and theTwo == " \"":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
-            theCursor.insertText(self.typDQOpen)
+        if not theOne: # Makes Neo sad
+            return
 
-        elif self.mainConf.doReplaceDQuote and theOne == "\"":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
+        nDelete = 0
+        tInsert = theOne
+
+        if self.mainConf.doReplaceDQuote and theTwo == ' "':
+            nDelete = 1
+            tInsert = self.typDQOpen
+
+        elif self.mainConf.doReplaceDQuote and theOne == '"':
+            nDelete = 1
             if thePos == 1:
-                theCursor.insertText(self.typDQOpen)
+                tInsert = self.typDQOpen
             else:
-                theCursor.insertText(self.typDQClose)
+                tInsert = self.typDQClose
 
         elif self.mainConf.doReplaceSQuote and theTwo == " '":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
-            theCursor.insertText(self.typSQOpen)
+            nDelete = 1
+            tInsert = self.typSQOpen
 
         elif self.mainConf.doReplaceSQuote and theOne == "'":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
+            nDelete = 1
             if thePos == 1:
-                theCursor.insertText(self.typSQOpen)
+                tInsert = self.typSQOpen
             else:
-                theCursor.insertText(self.typSQClose)
+                tInsert = self.typSQClose
 
         elif self.mainConf.doReplaceDash and theThree == "---":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 3)
-            theCursor.insertText(nwUnicode.U_EMDASH)
+            nDelete = 3
+            tInsert = nwUnicode.U_EMDASH
 
         elif self.mainConf.doReplaceDash and theTwo == "--":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 2)
-            theCursor.insertText(nwUnicode.U_ENDASH)
+            nDelete = 2
+            tInsert = nwUnicode.U_ENDASH
 
-        elif self.mainConf.doReplaceDash and theTwo == nwUnicode.U_ENDASH+"-":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 2)
-            theCursor.insertText(nwUnicode.U_EMDASH)
+        elif self.mainConf.doReplaceDash and theTwo == nwUnicode.U_ENDASH + "-":
+            nDelete = 2
+            tInsert = nwUnicode.U_EMDASH
 
         elif self.mainConf.doReplaceDots and theThree == "...":
-            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 3)
-            theCursor.insertText(nwUnicode.U_HELLIP)
+            nDelete = 3
+            tInsert = nwUnicode.U_HELLIP
+
+        tCheck = tInsert
+        if tCheck in self.mainConf.fmtPadBefore:
+            nDelete = max(nDelete, 1)
+            tInsert = self.typPadChar + tInsert
+
+        if tCheck in self.mainConf.fmtPadAfter:
+            nDelete = max(nDelete, 1)
+            tInsert = tInsert + self.typPadChar
+
+        if nDelete > 0:
+            theCursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, nDelete)
+            theCursor.insertText(tInsert)
 
         return
 
@@ -1298,7 +1494,8 @@ class GuiDocEditor(QTextEdit):
 
         else:
             self.theParent.makeAlert(
-                "Please selection some text before calling replace quotes.", nwAlert.ERROR
+                self.tr("Please select some text before calling replace quotes."),
+                nwAlert.ERROR
             )
 
         return
@@ -1511,9 +1708,7 @@ class GuiDocEditor(QTextEdit):
             theText = newText
             cOffset -= 0
         else:
-            logger.error(
-                "Unknown or unsupported block format requested: %s" % str(docAction)
-            )
+            logger.error("Unknown or unsupported block format requested: %s" % str(docAction))
             return False
 
         # Replace the block text
@@ -1564,132 +1759,6 @@ class GuiDocEditor(QTextEdit):
         theCursor = self.cursorForPosition(thePos)
         self.setTextCursor(theCursor)
         self._makeSelection(selMode)
-        return
-
-    def _beginSearch(self):
-        """Sets the selected text as the search text for the search bar.
-        """
-        theCursor = self.textCursor()
-        if theCursor.hasSelection():
-            self.docSearch.setSearchText(theCursor.selectedText())
-        else:
-            self.docSearch.setSearchText(None)
-        self.updateDocMargins()
-        return
-
-    def _beginReplace(self):
-        """Opens the replace line of the search bar and sets the find
-        text if a selection has been made, and resets the replace text.
-        """
-        theCursor = self.textCursor()
-        if theCursor.hasSelection():
-            self.docSearch.setSearchText(theCursor.selectedText())
-        else:
-            self.docSearch.setSearchText(None)
-        self.docSearch.setReplaceText("")
-        self.updateDocMargins()
-        return
-
-    def _findNext(self, isBackward=False):
-        """Searches for the next or previous occurrence of the search
-        bar text in the document. Wraps around if not found and loop is
-        enabled, or continues to next file if next file is enabled.
-        """
-        if not self.docSearch.isVisible():
-            self._beginSearch()
-            return
-
-        findOpt = QTextDocument.FindFlag(0)
-        if isBackward:
-            findOpt |= QTextDocument.FindBackward
-        if self.docSearch.isCaseSense:
-            findOpt |= QTextDocument.FindCaseSensitively
-        if self.docSearch.isWholeWord:
-            findOpt |= QTextDocument.FindWholeWords
-
-        searchFor = self.docSearch.getSearchObject()
-        wasFound  = self.find(searchFor, findOpt)
-        if not wasFound:
-            if self.docSearch.doNextFile and not isBackward:
-                self.theParent.openNextDocument(
-                    self.theHandle, wrapAround=self.docSearch.doLoop
-                )
-            elif self.docSearch.doLoop:
-                theCursor = self.textCursor()
-                theCursor.movePosition(
-                    QTextCursor.End if isBackward else QTextCursor.Start
-                )
-                self.setTextCursor(theCursor)
-                wasFound = self.find(searchFor, findOpt)
-
-        if wasFound:
-            theCursor = self.textCursor()
-            self.lastFind = (theCursor.selectionStart(), theCursor.selectionEnd())
-
-        return
-
-    def _replaceNext(self):
-        """Searches for the next occurrence of the search bar text in
-        the document and replaces it with the replace text. Calls search
-        next automatically when done.
-        """
-        if not self.docSearch.isVisible():
-            # The search tool is not active, so we activate it.
-            self._beginSearch()
-            return
-
-        theCursor = self.textCursor()
-        if not theCursor.hasSelection():
-            # We have no text selected at all, so just make this a
-            # regular find next call.
-            self._findNext()
-            return
-
-        if self.lastFind is None and theCursor.hasSelection():
-            # If we have a selection but no search, it may have been the
-            # text we triggered the search with, in which case we search
-            # again from the beginning of that selection to make sure we
-            # have a valid result.
-            sPos = theCursor.selectionStart()
-            theCursor.clearSelection()
-            theCursor.setPosition(sPos)
-            self.setTextCursor(theCursor)
-            self._findNext()
-            theCursor = self.textCursor()
-
-        if self.lastFind is None:
-            # In case the above didn't find a result, we give up here.
-            return
-
-        searchFor = self.docSearch.getSearchText()
-        replWith  = self.docSearch.getReplaceText()
-
-        if self.docSearch.doMatchCap:
-            replWith = transferCase(theCursor.selectedText(), replWith)
-
-        # Make sure the selected text was selected by an actual find
-        # call, and not the user.
-        try:
-            isFind  = self.lastFind[0] == theCursor.selectionStart()
-            isFind &= self.lastFind[1] == theCursor.selectionEnd()
-        except Exception:
-            isFind = False
-
-        if isFind:
-            theCursor.beginEditBlock()
-            theCursor.removeSelectedText()
-            theCursor.insertText(replWith)
-            theCursor.endEditBlock()
-            theCursor.setPosition(theCursor.selectionEnd())
-            self.setTextCursor(theCursor)
-            logger.verbose("Replaced occurrence of '%s' with '%s' on line %d" % (
-                searchFor, replWith, theCursor.blockNumber()
-            ))
-        else:
-            logger.error("The selected text is not a search result, skipping replace")
-
-        self._findNext()
-
         return
 
     def _setupSpellChecking(self):
@@ -1798,12 +1867,12 @@ class GuiDocEditSearch(QFrame):
         # ==========
         self.searchBox = QLineEdit(self)
         self.searchBox.setFont(boxFont)
-        self.searchBox.setPlaceholderText("Search")
+        self.searchBox.setPlaceholderText(self.tr("Search"))
         self.searchBox.returnPressed.connect(self._doSearch)
 
         self.replaceBox = QLineEdit(self)
         self.replaceBox.setFont(boxFont)
-        self.replaceBox.setPlaceholderText("Replace")
+        self.replaceBox.setPlaceholderText(self.tr("Replace"))
         self.replaceBox.returnPressed.connect(self._doReplace)
 
         self.searchOpt = QToolBar(self)
@@ -1812,44 +1881,44 @@ class GuiDocEditSearch(QFrame):
         self.searchOpt.setContentsMargins(0, 0, 0, 0)
         self.searchOpt.setStyleSheet(r"QToolBar {padding: 0;}")
 
-        self.searchLabel = QLabel("Search")
+        self.searchLabel = QLabel(self.tr("Search"))
         self.searchLabel.setFont(boxFont)
         self.searchLabel.setIndent(self.mainConf.pxInt(6))
 
-        self.toggleCase = QAction("Case Sensitive", self)
-        self.toggleCase.setToolTip("Match case")
+        self.toggleCase = QAction(self.tr("Case Sensitive"), self)
+        self.toggleCase.setToolTip(self.tr("Match case"))
         self.toggleCase.setIcon(self.theTheme.getIcon("search_case"))
         self.toggleCase.setCheckable(True)
         self.toggleCase.setChecked(self.isCaseSense)
         self.toggleCase.toggled.connect(self._doToggleCase)
         self.searchOpt.addAction(self.toggleCase)
 
-        self.toggleWord = QAction("Whole Words Only", self)
-        self.toggleWord.setToolTip("Match whole words")
+        self.toggleWord = QAction(self.tr("Whole Words Only"), self)
+        self.toggleWord.setToolTip(self.tr("Match whole words"))
         self.toggleWord.setIcon(self.theTheme.getIcon("search_word"))
         self.toggleWord.setCheckable(True)
         self.toggleWord.setChecked(self.isWholeWord)
         self.toggleWord.toggled.connect(self._doToggleWord)
         self.searchOpt.addAction(self.toggleWord)
 
-        self.toggleRegEx = QAction("RegEx Mode", self)
-        self.toggleRegEx.setToolTip("Use regular expressions (requires Qt 5.3)")
+        self.toggleRegEx = QAction(self.tr("RegEx Mode"), self)
+        self.toggleRegEx.setToolTip(self.tr("Search using regular expressions"))
         self.toggleRegEx.setIcon(self.theTheme.getIcon("search_regex"))
         self.toggleRegEx.setCheckable(True)
         self.toggleRegEx.setChecked(self.isRegEx)
         self.toggleRegEx.toggled.connect(self._doToggleRegEx)
         self.searchOpt.addAction(self.toggleRegEx)
 
-        self.toggleLoop = QAction("Loop Search", self)
-        self.toggleLoop.setToolTip("Loop the search when reaching the end")
+        self.toggleLoop = QAction(self.tr("Loop Search"), self)
+        self.toggleLoop.setToolTip(self.tr("Loop the search when reaching the end"))
         self.toggleLoop.setIcon(self.theTheme.getIcon("search_loop"))
         self.toggleLoop.setCheckable(True)
         self.toggleLoop.setChecked(self.doLoop)
         self.toggleLoop.toggled.connect(self._doToggleLoop)
         self.searchOpt.addAction(self.toggleLoop)
 
-        self.toggleProject = QAction("Search Next File", self)
-        self.toggleProject.setToolTip("Continue searching in the next file")
+        self.toggleProject = QAction(self.tr("Search Next File"), self)
+        self.toggleProject.setToolTip(self.tr("Continue searching in the next file"))
         self.toggleProject.setIcon(self.theTheme.getIcon("search_project"))
         self.toggleProject.setCheckable(True)
         self.toggleProject.setChecked(self.doNextFile)
@@ -1858,8 +1927,8 @@ class GuiDocEditSearch(QFrame):
 
         self.searchOpt.addSeparator()
 
-        self.toggleMatchCap = QAction("Preserve Case", self)
-        self.toggleMatchCap.setToolTip("Preserve case on replace")
+        self.toggleMatchCap = QAction(self.tr("Preserve Case"), self)
+        self.toggleMatchCap.setToolTip(self.tr("Preserve case on replace"))
         self.toggleMatchCap.setIcon(self.theTheme.getIcon("search_preserve"))
         self.toggleMatchCap.setCheckable(True)
         self.toggleMatchCap.setChecked(self.doMatchCap)
@@ -1868,8 +1937,8 @@ class GuiDocEditSearch(QFrame):
 
         self.searchOpt.addSeparator()
 
-        self.cancelSearch = QAction("Close Search", self)
-        self.cancelSearch.setToolTip("Close the search box [Esc]")
+        self.cancelSearch = QAction(self.tr("Close Search"), self)
+        self.cancelSearch.setToolTip(self.tr("Close the search box [{0}]").format("Esc"))
         self.cancelSearch.setIcon(self.theTheme.getIcon("search_cancel"))
         self.cancelSearch.triggered.connect(self._doClose)
         self.searchOpt.addAction(self.cancelSearch)
@@ -1881,18 +1950,18 @@ class GuiDocEditSearch(QFrame):
         self.showReplace = QToolButton(self)
         self.showReplace.setArrowType(Qt.RightArrow)
         self.showReplace.setCheckable(True)
-        self.showReplace.setToolTip("Show/hide the replace text box")
+        self.showReplace.setToolTip(self.tr("Show/hide the replace text box"))
         self.showReplace.setStyleSheet(r"QToolButton {border: none; background: transparent;}")
         self.showReplace.toggled.connect(self._doToggleReplace)
 
         self.searchButton = QPushButton(self.theTheme.getIcon("search"), "")
         self.searchButton.setFixedSize(QSize(bPx, bPx))
-        self.searchButton.setToolTip("Find in current document")
+        self.searchButton.setToolTip(self.tr("Find in current document"))
         self.searchButton.clicked.connect(self._doSearch)
 
         self.replaceButton = QPushButton(self.theTheme.getIcon("search-replace"), "")
         self.replaceButton.setFixedSize(QSize(bPx, bPx))
-        self.replaceButton.setToolTip("Find and replace in current document")
+        self.replaceButton.setToolTip(self.tr("Find and replace in current document"))
         self.replaceButton.clicked.connect(self._doReplace)
 
         self.mainBox.addWidget(self.searchLabel,   0, 0, 1, 2, Qt.AlignLeft)
@@ -2019,7 +2088,7 @@ class GuiDocEditSearch(QFrame):
                 self._alertSearchValid(theRegEx.isValid())
                 return theRegEx
 
-            elif self.mainConf.verQtValue >= 50300:
+            else: # >= 50300 to < 51300
                 if self.isCaseSense:
                     rxOpt = Qt.CaseSensitive
                 else:
@@ -2055,15 +2124,15 @@ class GuiDocEditSearch(QFrame):
         """
         modKey = qApp.keyboardModifiers()
         if modKey == Qt.ShiftModifier:
-            self.docEditor.docAction(nwDocAction.GO_PREV)
+            self.docEditor.findNext(goBack=True)
         else:
-            self.docEditor.docAction(nwDocAction.GO_NEXT)
+            self.docEditor.findNext()
         return
 
     def _doReplace(self):
         """Call the replace action function for the document editor.
         """
-        self.docEditor.docAction(nwDocAction.REPL_NEXT)
+        self.docEditor.replaceNext()
         return
 
     def _doToggleReplace(self, theState):
@@ -2152,7 +2221,6 @@ class GuiDocEditHeader(QWidget):
 
         fPx = int(0.9*self.theTheme.fontPixelSize)
         hSp = self.mainConf.pxInt(6)
-        self.buttonSize = fPx + hSp
 
         # Main Widget Settings
         self.setAutoFillBackground(True)
@@ -2185,7 +2253,7 @@ class GuiDocEditHeader(QWidget):
         self.editButton.setStyleSheet(buttonStyle)
         self.editButton.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.editButton.setVisible(False)
-        self.editButton.setToolTip("Edit document meta")
+        self.editButton.setToolTip(self.tr("Edit document meta"))
         self.editButton.clicked.connect(self._editDocument)
 
         self.searchButton = QToolButton(self)
@@ -2196,7 +2264,7 @@ class GuiDocEditHeader(QWidget):
         self.searchButton.setStyleSheet(buttonStyle)
         self.searchButton.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.searchButton.setVisible(False)
-        self.searchButton.setToolTip("Search document")
+        self.searchButton.setToolTip(self.tr("Search document"))
         self.searchButton.clicked.connect(self._searchDocument)
 
         self.minmaxButton = QToolButton(self)
@@ -2207,7 +2275,7 @@ class GuiDocEditHeader(QWidget):
         self.minmaxButton.setStyleSheet(buttonStyle)
         self.minmaxButton.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.minmaxButton.setVisible(False)
-        self.minmaxButton.setToolTip("Toggle Focus Mode")
+        self.minmaxButton.setToolTip(self.tr("Toggle Focus Mode"))
         self.minmaxButton.clicked.connect(self._minmaxDocument)
 
         self.closeButton = QToolButton(self)
@@ -2218,7 +2286,7 @@ class GuiDocEditHeader(QWidget):
         self.closeButton.setStyleSheet(buttonStyle)
         self.closeButton.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.closeButton.setVisible(False)
-        self.closeButton.setToolTip("Close the document")
+        self.closeButton.setToolTip(self.tr("Close the document"))
         self.closeButton.clicked.connect(self._closeDocument)
 
         # Assemble Layout
@@ -2298,6 +2366,17 @@ class GuiDocEditHeader(QWidget):
 
         return True
 
+    def updateFocusMode(self):
+        """Update the minimise/maximise icon of the Focus Mode button.
+        This function is called by the GuiMain class via the
+        toggleFocusMode function and should not be activated directly.
+        """
+        if self.theParent.isFocusMode:
+            self.minmaxButton.setIcon(self.theTheme.getIcon("minimise"))
+        else:
+            self.minmaxButton.setIcon(self.theTheme.getIcon("maximise"))
+        return
+
     ##
     #  Slots
     ##
@@ -2328,18 +2407,6 @@ class GuiDocEditHeader(QWidget):
         """Switch on or off Focus Mode.
         """
         self.theParent.toggleFocusMode()
-        if self.theParent.isFocusMode:
-            self.minmaxButton.setIcon(self.theTheme.getIcon("minimise"))
-            self.setContentsMargins(self.buttonSize, 0, 0, 0)
-            self.editButton.setVisible(False)
-            self.searchButton.setVisible(False)
-            self.closeButton.setVisible(False)
-        else:
-            self.minmaxButton.setIcon(self.theTheme.getIcon("maximise"))
-            self.setContentsMargins(0, 0, 0, 0)
-            self.editButton.setVisible(True)
-            self.searchButton.setVisible(True)
-            self.closeButton.setVisible(True)
         return
 
     ##
@@ -2394,7 +2461,7 @@ class GuiDocEditFooter(QWidget):
         self.statusIcon.setFixedHeight(self.sPx)
         self.statusIcon.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.statusText = QLabel("Status")
+        self.statusText = QLabel(self.tr("Status"))
         self.statusText.setIndent(0)
         self.statusText.setMargin(0)
         self.statusText.setContentsMargins(0, 0, 0, 0)
@@ -2410,7 +2477,7 @@ class GuiDocEditFooter(QWidget):
         self.linesIcon.setFixedHeight(self.sPx)
         self.linesIcon.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.linesText = QLabel("Line: 0")
+        self.linesText = QLabel("")
         self.linesText.setIndent(0)
         self.linesText.setMargin(0)
         self.linesText.setContentsMargins(0, 0, 0, 0)
@@ -2426,7 +2493,7 @@ class GuiDocEditFooter(QWidget):
         self.wordsIcon.setFixedHeight(self.sPx)
         self.wordsIcon.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.wordsText = QLabel("Words: 0")
+        self.wordsText = QLabel("")
         self.wordsText.setIndent(0)
         self.wordsText.setMargin(0)
         self.wordsText.setContentsMargins(0, 0, 0, 0)
@@ -2457,6 +2524,8 @@ class GuiDocEditFooter(QWidget):
 
         # Fix the Colours
         self.matchColours()
+        self.updateLineCount()
+        self.updateCounts()
 
         logger.debug("GuiDocEditFooter initialisation complete")
 
@@ -2511,8 +2580,11 @@ class GuiDocEditFooter(QWidget):
             else:
                 iStatus = self.theProject.importItems.checkEntry(iStatus)
                 theIcon = self.theParent.importIcons[iStatus]
+
             sIcon = theIcon.pixmap(self.sPx, self.sPx)
-            sText = self.theItem.itemStatus
+            sClass = trConst(nwLabels.CLASS_NAME[self.theItem.itemClass])
+            sLayout = trConst(nwLabels.LAYOUT_NAME[self.theItem.itemLayout])
+            sText = f"{self.theItem.itemStatus} / {sClass} / {sLayout}"
 
         self.statusIcon.setPixmap(sIcon)
         self.statusText.setText(sText)
@@ -2530,7 +2602,9 @@ class GuiDocEditFooter(QWidget):
             iLine = theCursor.blockNumber() + 1
             iDist = 100*iLine/self.docEditor.qDocument.blockCount()
 
-        self.linesText.setText(f"Line: {iLine:n} ({iDist:.0f}\u202f%)")
+        self.linesText.setText(
+            self.tr("Line: {0} ({1})").format(f"{iLine:n}", f"{iDist:.0f} %")
+        )
 
         return
 
@@ -2544,10 +2618,14 @@ class GuiDocEditFooter(QWidget):
             wCount = self.theItem.wordCount
             wDiff  = wCount - self.theItem.initCount
 
-        self.wordsText.setText(f"Words: {wCount:n} ({wDiff:+n})")
+        self.wordsText.setText(
+            self.tr("Words: {0} ({1})").format(f"{wCount:n}", f"{wDiff:+n}")
+        )
 
         byteSize = self.docEditor.qDocument.characterCount()
-        self.wordsText.setToolTip(f"Document size is {byteSize:n} bytes")
+        self.wordsText.setToolTip(
+            self.tr("Document size is {0} bytes").format(f"{byteSize:n}")
+        )
 
         return
 

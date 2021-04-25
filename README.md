@@ -15,40 +15,39 @@
 
 <img align="left" style="margin: 0 16px 4px 0;" src="https://raw.githubusercontent.com/vkbo/novelWriter/main/setup/icons/scaled/icon-novelwriter-96.png">
 
-novelWriter is a Markdown-like text editor designed for writing novels assembled from many smaller
-text documents. It uses a minimal formatting syntax inspired by Markdown, and adds a meta data
-syntax for comments, synopsis, and cross-referencing between files. It's designed to be a simple
-text editor that allows for easy organisation of text files and notes, built on plain text files
-for robustness.
+novelWriter is a plain text editor designed for writing novels assembled from many smaller text
+documents. It uses a minimal formatting syntax inspired by Markdown, and adds a meta data syntax
+for comments, synopsis, and cross-referencing. It's designed to be a simple text editor that allows
+for easy organisation of text and notes, using human readable text files as storage for robustness.
 
-The plain text files are suitable for version control software, and also well suited for file
-synchronisation tools. The core project structure is stored in a single project XML file. Other
-meta data is primarily saved in JSON files.
+The project storage is suitable for version control software, and also well suited for file
+synchronisation tools. All text is saved as plain text files with a meta data header, the core
+project structure is stored in a single project XML file, and other meta data is primarily saved as
+JSON files.
 
-The full documentation is available at
-[novelwriter.readthedocs.io](https://novelwriter.readthedocs.io).
+The full documentation is available on [readthedocs.io](https://novelwriter.readthedocs.io).
 
 ## Implementation
 
-The application is written in Python 3 using Qt5 via PyQt5. It is developed on Linux, but it should
-in principle work fine on other operating systems as well, as long as dependencies are met. The
-unit tests are run on the latest versions of Ubuntu Linux, Windows Server and macOS.
+The application is written in Python 3 (3.6+) using Qt5 and PyQt5 (5.3+). It is developed on Linux,
+but should in principle work fine on other operating systems as well as long as dependencies are
+met. It is regularly tested on Debian and Ubuntu Linux, Windows, and macOS.
 
 ## Project Contributions
 
 Contributions to this project are welcome. However, please read the
 [Contributing Guide](https://github.com/vkbo/novelWriter/blob/main/CONTRIBUTING.md) before
-submitting larger additions ot changes to this project.
+submitting larger additions or changes.
 
-# Key Features
+## Key Features
 
-Some features of novelWriter are listed below. Consult the
+Some key features of novelWriter are listed below. Consult the
 [documentation](https://novelwriter.readthedocs.io) for more information.
 
 ### Markdown Flavour
 
-novelWriter is _not_ a full-feature Markdown editor. It is a plain text editor that uses
-Markdown-like syntax for adding a minimal set of formatting that is useful for the specific task
+Note that novelWriter is _not_ a proper Markdown editor. It is a plain text editor that uses
+Markdown-like syntax to allow for a minimal set of formatting that is useful for the specific task
 of writing novels. The formatting is currently limited to:
 
 * Headings levels 1 to 4 using the `#` syntax only.
@@ -58,47 +57,48 @@ of writing novels. The formatting is currently limited to:
 
 That is it. Features not supported in the editor are also not exported when using the export tool.
 
-In addition, novelWriter adds the following, which is otherwise not supported by Markdown:
+In addition, novelWriter adds the following syntax used for its additional features:
 
 * A line starting with `%` is treated as a comment and not rendered on exports unless requested.
-  Comments do not count towards the word count. If the first word of the comment is `synopsis:`,
-  the comment is indexed and treated as the synopsis for the section of text under the same header.
-  These synopsis comments can be used to build an outline and exported to external documents.
-* A set of meta data keyword/values starting with the character `@`. This is used for tagging
-  and inter-linking documents, and can also be included when generate a project outline.
+  Comments do not count towards word counts and other statistics.
+* If the first word of the comment is `synopsis:`, the comment is indexed and treated as the
+  synopsis for the section of text where it occurs. These synopsis comments can be used to build an
+  outline and exported to external documents.
+* A set of meta data keyword/values starting with the character `@`. These are used for tagging
+  and inter-linking documents, and can also be included when generating a project outline.
 * A variety of thin and non-breaking spaces are supported. Some of them depend on the system
   running at least Qt 5.9. Earlier versions of Qt will unfortunately strip them out when saving.
 * Tabs can be used in the text, and should be properly aligned in both editor and viewer. This can
-  be used to make simple tables and lists. Full Markdown tables and lists are not supported. Note
-  that for HTML exports, most browsers will treat a tab as a space, so it may not show up like
-  expected. If you import the HTML file to Libre Office, for instance, they should appear as
-  expected.
+  be used to make simple tables and lists. Note that for HTML exports, most browsers will treat a
+  tab as a space, so it may not show up like expected. Open Document exports should produce the
+  expected result.
 
-The core export format of novelWriter is HTML5. You can also export the entire project as a single
-novelWriter Markdown-flavour document. These can later be imported again into novelWriter. In
-addition, export to Open Document, PDF, and plain text is offered through the Qt library, although
-with limitations to formatting.
+The core export formats of novelWriter are Open Document and HTML5. Open Document is an open
+standard for office type documents that is supported by most office applications. See
+[Open Document > Application Support](https://en.wikipedia.org/wiki/OpenDocument#Application_support)
+for more details.
 
-The HTML format is well suited for file conversion tools and import into other text editors.
+You can also export the entire project as a single novelWriter-flavour document. These can later be
+imported again into novelWriter. In addition, printing and export to PDF is offered through the Qt
+library, although with limitations to formatting.
 
 ### Colour Themes
 
 The editor has syntax highlighting for the features it supports, and includes a set of different
 syntax highlighting themes. Optional GUI themes are also available, including dark themes.
 
-
 ### Easy Organising of Project Files
 
 The structure of the project is shown on the left hand side of the main window. Project files are
 organised into root folders, indicating what class of file they are. The most important root folder
-is the `Novel` folder, which contains all of the files that make up the finished novel. Each root
+is the `Novel` folder, which contains all of the files that make up the novel itself. Each root
 folder can have subfolders. Subfolders have no impact on the final project structure, they are
 there for you to organise your files in whatever way you want.
 
-The editor supports four levels of headings, which determines what level the following text belongs
+The editor supports four levels of headings, which determine what level the following text belongs
 to. Headings of level one signify a book or partition title. Headings of level two signify the
 start of a new chapter. Headings of level three signify the start of a new scene. Headings of level
-four can be used internally in each scene to separate sections.
+four can be used internally in each scene to create separate sections.
 
 Each novel file can be assigned a layout format, which shows up as a flag next to the item in the
 project tree. These are mostly to help the user track what they contain, but they also have some
@@ -107,98 +107,91 @@ impact on the format of the exported document. See the
 
 ### Project Notes
 
-Supporting note files can be added for the story plot, characters, locations, story timeline, etc.
-These have their separate root folders. These are optional files.
-
+Supporting notes can be added for the story plot, characters, locations, story timeline, etc. These
+have their separate root folders and are optional to use.
 
 ### Visualisation of Story Elements
 
-The different notes can be assigned tags, which other files can refer back to using the `@` meta
-keywords. This information can be used to display an outline of the story, showing where each scene
-connects to the plot, and which characters, etc. occur in them. In addition, the tags themselves
-are clickable in the document view pane, and control-clickable in the editor. They make it possible
-to quickly navigate between the documents while editing.
+The different notes can be assigned tags, which other files can refer back to using `@`-prefixed
+meta keywords. This information can be used to display an outline of the story, showing where each
+scene connects to the plot, and which characters, etc. occur in them. In addition, the tags
+themselves are clickable in the document view pane, and control-clickable in the editor. They make
+it possible to quickly navigate between the documents while writing.
 
-# Installing and Running
+## Standard Installation
 
-For install instructions, please check the [Getting Started](https://novelwriter.readthedocs.io/en/latest/int_started.html) section in
-the [documentation](https://novelwriter.readthedocs.io/).
+For a regular installation, it is recommended that you download one of the minimal zip files from
+the [Releases](https://github.com/vkbo/novelWriter/releases) page or the
+[novelwriter.io](https://novelwriter.io/) website.
+The [documentation](https://novelwriter.readthedocs.io/) has detailed install instructions for
+[Linux](https://novelwriter.readthedocs.io/en/latest/setup_linux.html),
+[Windows](https://novelwriter.readthedocs.io/en/latest/setup_windows.html), and
+[macOS](https://novelwriter.readthedocs.io/en/latest/setup_mac.html).
+They are pretty straightforward.
 
-## TLDR Instructions
+## Running from Source
 
 If you want to run novelWriter directly from the source code, you must run the `novelWriter.py`
-file from command line. For installations on Linux, macOS or Windows, see below.
+file from command line.
 
 **Note:** You may need to replace `python` with `python3` and `pip` with `pip3` in the instructions
 below on some systems. You may also want to add the `--user` flag for `pip` to install in your user
 space only.
 
-### Install from PyPi
+### Dependencies
 
-novelWriter is available on [pypi.org](https://pypi.org/project/novelWriter/), and can be installed
-with:
-```bash
-pip install novelwriter
-```
-Dependencies should be installed automatically, but can also be installed directly with:
-```bash
-pip install pyqt5 lxml pyenchant
-```
-When installing via pip, novelWriter can be launched from command line with:
-```bash
-novelWriter
-```
-
-Make sure the install location for pip is in your PATH variable. This is not always the case by
-default.
-
-### Setup on Linux
-
-If you're installing from source, the following commands will set up novelWriter on Linux:
+Dependencies can generally be installed from PyPi with:
 ```bash
 pip install -r requirements.txt
-python setup.py install
+```
+
+### Additional Steps for Linux
+
+On Linux, you can most likely find the dependencies in your distribution's repository. On Ubuntu
+and Debian, run:
+```bash
+sudo apt install python3-pyqt5 python3-lxml python3-enchant
+```
+
+If you want to set up a launcher and icons on Linux, you can run:
+```bash
 python setup.py xdg-install
 ```
 
-This should make novelWriter available as a regular application on your system, with a launceher
-icon, and file association with novelWriter project files.
+### Additional Steps for macOS
 
-### Setup on macOS
-
-If you're installing from source, the following commands will set up novelWriter on macOS:
+First, make sure you have properly set up Python3 with Homebrew. If not, check their
+[documentation](https://docs.brew.sh/Homebrew-and-Python).
+In addition, the following steps are necessary to install all dependencies:
 ```bash
 brew install enchant
 pip3 install --user -r requirements.txt
 pip3 install --user pyobjc
-python3 setup.py install
 ```
 
-At present, novelWriter isn't further integrated into the OS, so you must launch it from command
-line with:
-```bash
-novelWriter
-```
+### Additional Steps for Windows
 
-### Setup on Windows
+Windows does not by default come with Python installed. If you haven't installed it already, get it
+from [python.org/downloads](https://www.python.org/downloads/). Remember to select "Add Python to
+PATH" during the installation.
 
-For Windows, first ensure that you have Python installed. If not, get it from
-[python.org/downloads](https://www.python.org/downloads/). Remember to select "Add Python to PATH"
-during the installation, otherwise novelWriter cannot find it.
+The script `windows_install.bat` in the `setup` folder can be used to create desktop and start menu
+icons for novelWriter. The script will also install dependencies for you from PyPi.
 
-Then, download the `novelWriter-x.y.z-minimal.zip` file, where `x.y.z` is the version number, from
-the [releases](https://github.com/vkbo/novelWriter/releases) page. You can extract it to wherever
-you want to keep novelWriter on your PC, and run the `setup_windows.bat` file in it
-(double-clicking it should work). This will install the necessary dependencies from
-[pypi.org](https://pypi.org/) and create desktop and start menu icons.
+## Internationalisation
+
+If you install from source, you must build the translation files yourself if you want to switch to
+a different GUI language than British English. This requires that you have the Qt translation
+framework installed. Check the specific instruction in the README in the `i18n` source folder for
+how to build the translation files.
 
 ## Debugging
 
-If you need to debug novelWriter, you must run it from command line. It takes a few parameters,
+If you need to debug novelWriter, you must run it from the command line. It takes a few parameters,
 which can be listed with the switch `--help`. The `--info`, `--debug` or `--verbose` flags are
 particularly useful for increasing logging output for debugging.
 
-# Licenses
+## Licenses
 
 This is Open Source software, and novelWriter is licensed under GPLv3. See the
 [GNU General Public License website](https://www.gnu.org/licenses/gpl-3.0.en.html) for more
@@ -224,7 +217,7 @@ Bundled assets have the following licenses:
   the main repo is available at
   [sdras/night-owl-vscode-theme](https://github.com/sdras/night-owl-vscode-theme).
 
-# Screenshot
+## Screenshots
 
 **novelWriter with default system theme:**
 ![Screenshot 1](https://raw.githubusercontent.com/vkbo/novelWriter/main/docs/source/images/screenshot_default.png)

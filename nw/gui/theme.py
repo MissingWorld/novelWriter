@@ -31,14 +31,15 @@ import configparser
 import os
 
 from math import ceil
+from functools import partial
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QCoreApplication, Qt
 from PyQt5.QtWidgets import QStyle, qApp
 from PyQt5.QtGui import (
     QPalette, QColor, QIcon, QFont, QFontMetrics, QFontDatabase, QPixmap
 )
 
-from nw.constants import nwAlert
+from nw.enum import nwAlert
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,10 @@ class GuiTheme:
         logger.verbose("Text 'N' Height: %d" % self.textNHeight)
         logger.verbose("Text 'N' Width: %d" % self.textNWidth)
 
+        # Internal Mapping
+        self.makeAlert = self.theParent.makeAlert
+        self.tr = partial(QCoreApplication.translate, "GuiTheme")
+
         return
 
     ##
@@ -268,9 +273,9 @@ class GuiTheme:
             if os.path.isfile(self.cssFile):
                 with open(self.cssFile, mode="r", encoding="utf8") as inFile:
                     cssData = inFile.read()
-        except Exception as e:
+        except Exception:
             logger.error("Could not load theme css file")
-            logger.error(str(e))
+            nw.logException()
             return False
 
         # Config File
@@ -278,9 +283,9 @@ class GuiTheme:
         try:
             with open(self.confFile, mode="r", encoding="utf8") as inFile:
                 confParser.read_file(inFile)
-        except Exception as e:
+        except Exception:
             logger.error("Could not load theme settings from: %s" % self.confFile)
-            logger.error(str(e))
+            nw.logException()
             return False
 
         ## Main
@@ -336,9 +341,9 @@ class GuiTheme:
         try:
             with open(self.syntaxFile, mode="r", encoding="utf8") as inFile:
                 confParser.read_file(inFile)
-        except Exception as e:
+        except Exception:
             logger.error("Could not load syntax colours from: %s" % self.syntaxFile)
-            logger.error(str(e))
+            nw.logException()
             return False
 
         ## Main
@@ -392,8 +397,8 @@ class GuiTheme:
                 with open(themeConf, mode="r", encoding="utf8") as inFile:
                     confParser.read_file(inFile)
             except Exception as e:
-                self.theParent.makeAlert(
-                    ["Could not load theme config file.", str(e)], nwAlert.ERROR
+                self.makeAlert(
+                    [self.tr("Could not load theme config file."), str(e)], nwAlert.ERROR
                 )
                 continue
             themeName = ""
@@ -425,8 +430,8 @@ class GuiTheme:
                 with open(syntaxPath, mode="r", encoding="utf8") as inFile:
                     confParser.read_file(inFile)
             except Exception as e:
-                self.theParent.makeAlert(
-                    ["Could not load syntax file.", str(e)], nwAlert.ERROR
+                self.makeAlert(
+                    [self.tr("Could not load syntax file."), str(e)], nwAlert.ERROR
                 )
                 return []
             syntaxName = ""
@@ -539,6 +544,7 @@ class GuiIcons:
         "proj_nwx"        : (None, None),
         "status_lang"     : (None, None),
         "status_time"     : (None, None),
+        "status_idle"     : (None, None),
         "status_stats"    : (None, None),
         "status_lines"    : (None, None),
         "doc_h0"          : (QStyle.SP_FileIcon, "x-office-document"),
@@ -640,9 +646,9 @@ class GuiIcons:
         try:
             with open(self.confFile, mode="r", encoding="utf8") as inFile:
                 confParser.read_file(inFile)
-        except Exception as e:
+        except Exception:
             logger.error("Could not load icon theme settings from: %s" % self.confFile)
-            logger.error(str(e))
+            nw.logException()
             return False
 
         ## Main
@@ -739,8 +745,8 @@ class GuiIcons:
                 with open(themeConf, mode="r", encoding="utf8") as inFile:
                     confParser.read_file(inFile)
             except Exception as e:
-                self.theParent.makeAlert(
-                    ["Could not load theme config file.", str(e)], nwAlert.ERROR
+                self.makeAlert(
+                    [self.tr("Could not load theme config file."), str(e)], nwAlert.ERROR
                 )
                 continue
             themeName = ""

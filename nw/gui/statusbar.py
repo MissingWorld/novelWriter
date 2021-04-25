@@ -29,11 +29,10 @@ import logging
 
 from time import time
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QLocale
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import qApp, QStatusBar, QLabel, QAbstractButton
 
-from nw.core import NWSpellCheck
 from nw.common import formatTime
 
 logger = logging.getLogger(__name__)
@@ -49,6 +48,7 @@ class GuiMainStatus(QStatusBar):
         self.theParent = theParent
         self.theTheme  = theParent.theTheme
         self.refTime   = None
+        self.userIdle  = False
 
         colNone  = QColor(*self.theTheme.statNone)
         colTrue  = QColor(*self.theTheme.statUnsaved)
@@ -63,7 +63,7 @@ class GuiMainStatus(QStatusBar):
 
         ## The Spell Checker Language
         self.langIcon = QLabel("")
-        self.langText = QLabel("None")
+        self.langText = QLabel(self.tr("None"))
         self.langIcon.setPixmap(self.theTheme.getPixmap("status_lang", (iPx, iPx)))
         self.langIcon.setContentsMargins(0, 0, 0, 0)
         self.langText.setContentsMargins(0, 0, xM, 0)
@@ -72,7 +72,7 @@ class GuiMainStatus(QStatusBar):
 
         ## The Editor Status
         self.docIcon = StatusLED(colNone, colTrue, colFalse, iPx, iPx, self)
-        self.docText = QLabel("Editor")
+        self.docText = QLabel(self.tr("Editor"))
         self.docIcon.setContentsMargins(0, 0, 0, 0)
         self.docText.setContentsMargins(0, 0, xM, 0)
         self.addPermanentWidget(self.docIcon)
@@ -80,7 +80,7 @@ class GuiMainStatus(QStatusBar):
 
         ## The Project Status
         self.projIcon = StatusLED(colNone, colTrue, colFalse, iPx, iPx, self)
-        self.projText = QLabel("Project")
+        self.projText = QLabel(self.tr("Project"))
         self.projIcon.setContentsMargins(0, 0, 0, 0)
         self.projText.setContentsMargins(0, 0, xM, 0)
         self.addPermanentWidget(self.projIcon)
@@ -97,10 +97,13 @@ class GuiMainStatus(QStatusBar):
 
         ## The Session Clock
         ### Set the mimimum width so the label doesn't rescale every second
+        self.timePixmap = self.theTheme.getPixmap("status_time", (iPx, iPx))
+        self.idlePixmap = self.theTheme.getPixmap("status_idle", (iPx, iPx))
+
         self.timeIcon = QLabel()
         self.timeText = QLabel("")
-        self.timeIcon.setPixmap(self.theTheme.getPixmap("status_time", (iPx, iPx)))
-        self.timeText.setToolTip("Session Time")
+        self.timeIcon.setPixmap(self.timePixmap)
+        self.timeText.setToolTip(self.tr("Session Time"))
         self.timeText.setMinimumWidth(self.theTheme.getTextWidth("00:00:00:"))
         self.timeIcon.setContentsMargins(0, 0, 0, 0)
         self.timeText.setContentsMargins(0, 0, 0, 0)
@@ -109,12 +112,6 @@ class GuiMainStatus(QStatusBar):
 
         # Other Settings
         self.setSizeGripEnabled(True)
-
-        # Start the Clock
-        self.sessionTimer = QTimer()
-        self.sessionTimer.setInterval(1000)
-        self.sessionTimer.timeout.connect(self._updateTime)
-        self.sessionTimer.start()
 
         logger.debug("GuiMainStatus initialisation complete")
 
@@ -130,7 +127,7 @@ class GuiMainStatus(QStatusBar):
         self.setStats(0, 0)
         self.setProjectStatus(None)
         self.setDocumentStatus(None)
-        self._updateTime()
+        self.updateTime()
         return True
 
     ##
@@ -154,13 +151,17 @@ class GuiMainStatus(QStatusBar):
         """Set the language code for the spell checker.
         """
         if theLanguage is None:
-            self.langText.setText("None")
+            self.langText.setText(self.tr("None"))
             self.langText.setToolTip("")
         else:
-            self.langText.setText(NWSpellCheck.expandLanguage(theLanguage))
-            self.langText.setToolTip(
-                "Provider: %s" % (theProvider if theProvider else "unknown")
-            )
+            qLocal = QLocale(theLanguage)
+            spLang = qLocal.nativeLanguageName().title()
+            self.langText.setText(spLang)
+            if theProvider:
+                self.langText.setToolTip("%s (%s)" % (theLanguage, theProvider))
+            else:
+                self.langText.setToolTip(theLanguage)
+
         return
 
     def setProjectStatus(self, isChanged):
@@ -178,21 +179,37 @@ class GuiMainStatus(QStatusBar):
     def setStats(self, pWC, sWC):
         """Set the current project statistics.
         """
-        self.statsText.setText(f"Words: {pWC:n} ({sWC:+n})")
-        self.statsText.setToolTip("Project word count (session change)")
+        self.statsText.setText(self.tr("Words: {0} ({1})").format(f"{pWC:n}", f"{sWC:+n}"))
+        self.statsText.setToolTip(self.tr("Project word count (session change)"))
         return
 
-    ##
-    #  Internal Functions
-    ##
+    def setUserIdle(self, userIdle):
+        """Change the idle status icon.
+        """
+        if not self.mainConf.stopWhenIdle:
+            userIdle = False
 
-    def _updateTime(self):
+        if self.userIdle != userIdle:
+            if userIdle:
+                self.timeIcon.setPixmap(self.idlePixmap)
+            else:
+                self.timeIcon.setPixmap(self.timePixmap)
+
+            self.userIdle = userIdle
+
+        return
+
+    def updateTime(self, idleTime=0.0):
         """Update the session clock.
         """
         if self.refTime is None:
             self.timeText.setText("00:00:00")
         else:
-            self.timeText.setText(formatTime(round(time() - self.refTime)))
+            if self.mainConf.stopWhenIdle:
+                sessTime = round(time() - self.refTime - idleTime)
+            else:
+                sessTime = round(time() - self.refTime)
+            self.timeText.setText(formatTime(sessTime))
         return
 
 # END Class GuiMainStatus

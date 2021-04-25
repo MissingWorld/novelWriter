@@ -34,7 +34,8 @@ from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QMenu, QAction, QAbstractItemView
 )
 
-from nw.constants import nwKeyWords, nwLabels, nwOutline
+from nw.enum import nwOutline
+from nw.constants import trConst, nwKeyWords, nwLabels
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class GuiOutline(QTreeWidget):
         nwOutline.WCOUNT : 50,
         nwOutline.PCOUNT : 50,
         nwOutline.POV    : 100,
+        nwOutline.FOCUS  : 100,
         nwOutline.CHAR   : 100,
         nwOutline.PLOT   : 100,
         nwOutline.TIME   : 100,
@@ -68,6 +70,7 @@ class GuiOutline(QTreeWidget):
         nwOutline.WCOUNT : False,
         nwOutline.PCOUNT : False,
         nwOutline.POV    : False,
+        nwOutline.FOCUS  : True,
         nwOutline.CHAR   : False,
         nwOutline.PLOT   : False,
         nwOutline.TIME   : True,
@@ -147,7 +150,7 @@ class GuiOutline(QTreeWidget):
         """
         self.clear()
         self.setColumnCount(1)
-        self.setHeaderLabel(nwLabels.OUTLINE_COLS[nwOutline.TITLE])
+        self.setHeaderLabel(trConst(nwLabels.OUTLINE_COLS[nwOutline.TITLE]))
 
         self.treeOrder = []
         self.colWidth  = {}
@@ -353,7 +356,7 @@ class GuiOutline(QTreeWidget):
         if self.firstView:
             theLabels = []
             for i, hItem in enumerate(self.treeOrder):
-                theLabels.append(nwLabels.OUTLINE_COLS[hItem])
+                theLabels.append(trConst(nwLabels.OUTLINE_COLS[hItem]))
                 self.colIndex[hItem] = i
 
             self.setHeaderLabels(theLabels)
@@ -451,6 +454,7 @@ class GuiOutline(QTreeWidget):
 
         theRefs = self.theIndex.getReferences(tHandle, sTitle)
         newItem.setText(self.colIndex[nwOutline.POV],    ", ".join(theRefs[nwKeyWords.POV_KEY]))
+        newItem.setText(self.colIndex[nwOutline.FOCUS],  ", ".join(theRefs[nwKeyWords.FOCUS_KEY]))
         newItem.setText(self.colIndex[nwOutline.CHAR],   ", ".join(theRefs[nwKeyWords.CHAR_KEY]))
         newItem.setText(self.colIndex[nwOutline.PLOT],   ", ".join(theRefs[nwKeyWords.PLOT_KEY]))
         newItem.setText(self.colIndex[nwOutline.TIME],   ", ".join(theRefs[nwKeyWords.TIME_KEY]))
@@ -471,7 +475,7 @@ class GuiOutlineHeaderMenu(QMenu):
         self.theParent = theParent
         self.acceptToggle = True
 
-        mnuHead = QAction("Select Columns", self)
+        mnuHead = QAction(self.tr("Select Columns"), self)
         self.addAction(mnuHead)
         self.addSeparator()
 
@@ -479,7 +483,7 @@ class GuiOutlineHeaderMenu(QMenu):
         for hItem in nwOutline:
             if hItem == nwOutline.TITLE:
                 continue
-            self.actionMap[hItem] = QAction(nwLabels.OUTLINE_COLS[hItem], self)
+            self.actionMap[hItem] = QAction(trConst(nwLabels.OUTLINE_COLS[hItem]), self)
             self.actionMap[hItem].setCheckable(True)
             self.actionMap[hItem].toggled.connect(
                 lambda isChecked, tItem=hItem : self._columnToggled(isChecked, tItem)
