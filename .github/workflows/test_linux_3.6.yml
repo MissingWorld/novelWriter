@@ -26,12 +26,8 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest-timeout
-          pip install pytest-cov
           pip install pytest-qt
-          pip install codecov
       - name: Run Tests
         run: |
           export QT_QPA_PLATFORM=offscreen
-          pytest -v --cov=nw --timeout=60
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v1
+          pytest -v --timeout=60

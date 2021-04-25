@@ -26,8 +26,7 @@ import pytest
 from lxml import etree
 
 from nw.core.project import NWProject, NWItem, NWTree
-from nw.enum import nwItemClass, nwItemType, nwItemLayout
-from nw.constants import nwFiles
+from nw.constants import nwItemClass, nwItemType, nwItemLayout, nwFiles
 
 @pytest.fixture(scope="function")
 def dummyItems(dummyGUI):
@@ -124,9 +123,9 @@ def testCoreTree_BuildTree(dummyGUI, dummyItems):
     assert not theTree.isTrashRoot("a000000000003")
 
     aHandles = []
-    for tHandle, pHandle, nwItem in dummyItems:
+    for tHandle, pHande, nwItem in dummyItems:
         aHandles.append(tHandle)
-        assert theTree.append(tHandle, pHandle, nwItem)
+        assert theTree.append(tHandle, pHande, nwItem)
 
     assert theTree._treeChanged
 
@@ -203,13 +202,13 @@ def testCoreTree_BuildTree(dummyGUI, dummyItems):
 
 @pytest.mark.core
 def testCoreTree_Methods(dummyGUI, dummyItems):
-    """Test bvarious class methods.
+    """Test building a project tree from a list of items.
     """
     theProject = NWProject(dummyGUI)
     theTree = NWTree(theProject)
 
-    for tHandle, pHandle, nwItem in dummyItems:
-        theTree.append(tHandle, pHandle, nwItem)
+    for tHandle, pHande, nwItem in dummyItems:
+        theTree.append(tHandle, pHande, nwItem)
 
     assert len(theTree) == len(dummyItems)
 
@@ -258,131 +257,6 @@ def testCoreTree_Methods(dummyGUI, dummyItems):
 # END Test testCoreTree_Methods
 
 @pytest.mark.core
-def testCoreTree_UpdateItemLayout(dummyGUI, dummyItems):
-    """Test building a project tree from a list of items.
-    """
-    theProject = NWProject(dummyGUI)
-    theTree = NWTree(theProject)
-
-    for tHandle, pHandle, nwItem in dummyItems:
-        theTree.append(tHandle, pHandle, nwItem)
-
-    assert len(theTree) == len(dummyItems)
-
-    # Check rejected items
-    assert not theTree.updateItemLayout("0000000000000", "H1") # Non-existent handle
-    assert not theTree.updateItemLayout("a000000000004", "H2") # Character file
-    assert not theTree.updateItemLayout("c000000000002", "H0") # Wrong header level
-
-    cHandle = "c000000000002"
-
-    # Check layouts we won't change
-    theTree[cHandle].setLayout(nwItemLayout.NO_LAYOUT)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    theTree[cHandle].setLayout(nwItemLayout.TITLE)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    theTree[cHandle].setLayout(nwItemLayout.PAGE)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    theTree[cHandle].setLayout(nwItemLayout.NOTE)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    # BOOK is also a layout we change to, but never from
-    theTree[cHandle].setLayout(nwItemLayout.BOOK)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    # Test SCENE Changes
-    # ==================
-
-    # H1 -> BOOK
-    theTree[cHandle].setLayout(nwItemLayout.SCENE)
-    assert theTree.updateItemLayout("c000000000002", "H1")
-    assert theTree[cHandle].itemLayout == nwItemLayout.BOOK
-
-    # H2 -> CHAPTER
-    theTree[cHandle].setLayout(nwItemLayout.SCENE)
-    assert theTree.updateItemLayout("c000000000002", "H2")
-    assert theTree[cHandle].itemLayout == nwItemLayout.CHAPTER
-
-    # H3 -> No CHange
-    theTree[cHandle].setLayout(nwItemLayout.SCENE)
-    assert not theTree.updateItemLayout("c000000000002", "H3")
-
-    # H4 -> No CHange
-    theTree[cHandle].setLayout(nwItemLayout.SCENE)
-    assert not theTree.updateItemLayout("c000000000002", "H4")
-
-    # Test CHAPTER Changes
-    # ====================
-
-    # H1 -> BOOK
-    theTree[cHandle].setLayout(nwItemLayout.CHAPTER)
-    assert theTree.updateItemLayout("c000000000002", "H1")
-    assert theTree[cHandle].itemLayout == nwItemLayout.BOOK
-
-    # H2 -> No Change
-    theTree[cHandle].setLayout(nwItemLayout.CHAPTER)
-    assert not theTree.updateItemLayout("c000000000002", "H2")
-
-    # H3 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.CHAPTER)
-    assert theTree.updateItemLayout("c000000000002", "H3")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-    # H4 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.CHAPTER)
-    assert theTree.updateItemLayout("c000000000002", "H4")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-    # Test UNNUMBERED Changes
-    # =======================
-
-    # H1 -> BOOK
-    theTree[cHandle].setLayout(nwItemLayout.UNNUMBERED)
-    assert theTree.updateItemLayout("c000000000002", "H1")
-    assert theTree[cHandle].itemLayout == nwItemLayout.BOOK
-
-    # H2 -> No Change
-    theTree[cHandle].setLayout(nwItemLayout.UNNUMBERED)
-    assert not theTree.updateItemLayout("c000000000002", "H2")
-
-    # H3 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.UNNUMBERED)
-    assert theTree.updateItemLayout("c000000000002", "H3")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-    # H4 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.UNNUMBERED)
-    assert theTree.updateItemLayout("c000000000002", "H4")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-    # Test PARTITION Changes
-    # ======================
-
-    # H1 -> BOOK
-    theTree[cHandle].setLayout(nwItemLayout.PARTITION)
-    assert not theTree.updateItemLayout("c000000000002", "H1")
-
-    # H2 -> No Change
-    theTree[cHandle].setLayout(nwItemLayout.PARTITION)
-    assert theTree.updateItemLayout("c000000000002", "H2")
-    assert theTree[cHandle].itemLayout == nwItemLayout.CHAPTER
-
-    # H3 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.PARTITION)
-    assert theTree.updateItemLayout("c000000000002", "H3")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-    # H4 -> SCENE
-    theTree[cHandle].setLayout(nwItemLayout.PARTITION)
-    assert theTree.updateItemLayout("c000000000002", "H4")
-    assert theTree[cHandle].itemLayout == nwItemLayout.SCENE
-
-# END Test testCoreTree_UpdateItemLayout
-
-@pytest.mark.core
 def testCoreTree_MakeHandles(monkeypatch, dummyGUI):
     """Test generating item handles.
     """
@@ -411,6 +285,8 @@ def testCoreTree_MakeHandles(monkeypatch, dummyGUI):
     theTree._projTree[tHandle] = None
     assert tHandle == "a79acf4c634a7"
 
+    monkeypatch.undo()
+
 # END Test testCoreTree_MakeHandles
 
 @pytest.mark.core
@@ -420,8 +296,8 @@ def testCoreTree_Stats(dummyGUI, dummyItems):
     theProject = NWProject(dummyGUI)
     theTree = NWTree(theProject)
 
-    for tHandle, pHandle, nwItem in dummyItems:
-        theTree.append(tHandle, pHandle, nwItem)
+    for tHandle, pHande, nwItem in dummyItems:
+        theTree.append(tHandle, pHande, nwItem)
 
     assert len(theTree) == len(dummyItems)
     theTree._treeOrder.append("dummy")
@@ -447,9 +323,9 @@ def testCoreTree_Reorder(dummyGUI, dummyItems):
     theTree = NWTree(theProject)
 
     aHandle = []
-    for tHandle, pHandle, nwItem in dummyItems:
+    for tHandle, pHande, nwItem in dummyItems:
         aHandle.append(tHandle)
-        theTree.append(tHandle, pHandle, nwItem)
+        theTree.append(tHandle, pHande, nwItem)
 
     assert len(theTree) == len(dummyItems)
 
@@ -472,13 +348,13 @@ def testCoreTree_Reorder(dummyGUI, dummyItems):
 
 @pytest.mark.core
 def testCoreTree_XMLPackUnpack(dummyGUI, dummyItems):
-    """Test packing and unpacking the tree to and from XML.
+    """Test changing tree order.
     """
     theProject = NWProject(dummyGUI)
     theTree = NWTree(theProject)
 
-    for tHandle, pHandle, nwItem in dummyItems:
-        theTree.append(tHandle, pHandle, nwItem)
+    for tHandle, pHande, nwItem in dummyItems:
+        theTree.append(tHandle, pHande, nwItem)
 
     assert len(theTree) == len(dummyItems)
 
@@ -532,8 +408,8 @@ def testCoreTree_ToCFile(monkeypatch, dummyGUI, dummyItems, tmpDir):
     theProject = NWProject(dummyGUI)
     theTree = NWTree(theProject)
 
-    for tHandle, pHandle, nwItem in dummyItems:
-        theTree.append(tHandle, pHandle, nwItem)
+    for tHandle, pHande, nwItem in dummyItems:
+        theTree.append(tHandle, pHande, nwItem)
 
     assert len(theTree) == len(dummyItems)
     theTree._treeOrder.append("dummy")

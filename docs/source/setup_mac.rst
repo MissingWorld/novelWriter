@@ -9,9 +9,8 @@ Setup on macOS
 .. _brew docs: https://docs.brew.sh/Homebrew-and-Python
 
 This is a brief guide to how you can get novelWriter running on macOS. There are currently no
-install package of novelWriter for macOS, so it is recommended that you download either the full
-source or minimal package and extract it to a practical location on your system and
-run it.
+packaged version of novelWriter for macOS, so it is recommended that you just extract the source to a
+practical location on your system and run it.
 
 
 Running from Source
@@ -52,19 +51,12 @@ You can install novelWriter to the correct location for Python packages with:
 
 .. code-block:: console
 
-   ./setup.py install --user
+   ./setup.py install
 
-This requires that the package ``setuptools`` is installed on your system. If not, it can be
-installed with:
-
-.. code-block:: console
-
-   pip3 install --user setuptools
-
-This is method of install is equivalent to what the ``pip`` installer does. It puts novelWriter in
-the location on your system where Python packages are usually kept. This is not really the best
-suited location for a GUI application like novelWriter, so you may instead copy the entire source
-to a suiteable location yourself.
+This is equivalent to what the ``pip`` installer does. It puts novelWriter in the location on your
+system where Python packages are usually kept. This is not really the best suited location for a
+GUI application like novelWriter, so you may instead copy the entire source to a suiteable location
+yourself.
 
 After this, you should be able to launch novelWriter by running ``novelWriter`` in a command line
 window.

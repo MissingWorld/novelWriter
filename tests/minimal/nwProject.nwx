@@ -11,7 +11,6 @@
   </project>
   <settings>
     <doBackup>True</doBackup>
-    <language>en</language>
     <spellCheck>False</spellCheck>
     <spellLang>None</spellLang>
     <autoOutline>True</autoOutline>

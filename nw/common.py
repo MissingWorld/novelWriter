@@ -29,9 +29,7 @@ import logging
 from datetime import datetime
 
 from PyQt5.QtWidgets import qApp
-from PyQt5.QtCore import QCoreApplication
 
-from nw.enum import nwItemClass, nwItemType, nwItemLayout
 from nw.constants import nwConst, nwUnicode
 
 logger = logging.getLogger(__name__)
@@ -105,39 +103,11 @@ def isHandle(theString):
         return False
     if len(theString) != 13:
         return False
+    invalidChar = False
     for c in theString:
         if c not in "0123456789abcdef":
-            return False
-    return True
-
-def isTitleTag(theString):
-    """Check if a string is a valid title string.
-    """
-    if not isinstance(theString, str):
-        return False
-    if len(theString) != 7:
-        return False
-    if not theString.startswith("T"):
-        return False
-    for c in theString[1:]:
-        if c not in "0123456789":
-            return False
-    return True
-
-def isItemClass(theString):
-    """Check if an item is a calid nwItemClass identifier.
-    """
-    return theString in nwItemClass.__members__
-
-def isItemType(theString):
-    """Check if an item is a calid nwItemType identifier.
-    """
-    return theString in nwItemType.__members__
-
-def isItemLayout(theString):
-    """Check if an item is a calid nwItemLayout identifier.
-    """
-    return theString in nwItemLayout.__members__
+            invalidChar = True
+    return not invalidChar
 
 def hexToInt(value, default=0):
     """Convert a hex string to an integer.
@@ -148,6 +118,37 @@ def hexToInt(value, default=0):
         except Exception:
             return default
     return default
+
+def colRange(rgbStart, rgbEnd, nStep):
+    """Generate a range of colours from one RGB value to another.
+    """
+    if len(rgbStart) != 3 and len(rgbEnd) != 3 and nStep < 1:
+        logger.error("Cannot create colour range from given parameters")
+        return None
+
+    if nStep == 1:
+        return rgbStart
+    elif nStep == 2:
+        return [rgbStart, rgbEnd]
+
+    dC = [0, 0, 0]
+    for c in range(3):
+        cA = rgbStart[c]
+        cB = rgbEnd[c]
+        dC[c] = (cB-cA)/(nStep-1)
+    print(dC)
+    retCol = [rgbStart]
+    for n in range(nStep):
+        if n > 0 and n < nStep:
+            retCol.append([
+                int(retCol[n-1][0] + dC[0]),
+                int(retCol[n-1][1] + dC[1]),
+                int(retCol[n-1][2] + dC[2]),
+            ])
+    retCol[-1] = rgbEnd
+    print(retCol)
+
+    return retCol
 
 def formatInt(theInt):
     """Formats an integer with k, M, G etc.
@@ -236,61 +237,33 @@ def fuzzyTime(secDiff):
     """Converts a time difference in seconds into a fuzzy time string.
     """
     if secDiff < 0:
-        return QCoreApplication.translate(
-            "Common", "in the future"
-        )
+        return "in the future"
     elif secDiff < 30:
-        return QCoreApplication.translate(
-            "Common", "just now"
-        )
+        return "just now"
     elif secDiff < 90:
-        return QCoreApplication.translate(
-            "Common", "a minute ago"
-        )
+        return "a minute ago"
     elif secDiff < 3300: # 55 minutes
-        return QCoreApplication.translate(
-            "Common", "{0} minutes ago"
-        ).format(int(round(secDiff/60)))
+        return "%d minutes ago" % int(round(secDiff/60))
     elif secDiff < 5400: # 90 minutes
-        return QCoreApplication.translate(
-            "Common", "an hour ago"
-        )
+        return "an hour ago"
     elif secDiff < 84600: # 23.5 hours
-        return QCoreApplication.translate(
-            "Common", "{0} hours ago"
-        ).format(int(round(secDiff/3600)))
+        return "%d hours ago" % int(round(secDiff/3600))
     elif secDiff < 129600: # 1.5 days
-        return QCoreApplication.translate(
-            "Common", "a day ago"
-        )
+        return "a day ago"
     elif secDiff < 561600: # 6.5 days
-        return QCoreApplication.translate(
-            "Common", "{0} days ago"
-        ).format(int(round(secDiff/86400)))
+        return "%d days ago" % int(round(secDiff/86400))
     elif secDiff < 907200: # 10.5 days
-        return QCoreApplication.translate(
-            "Common", "a week ago"
-        )
+        return "a week ago"
     elif secDiff < 2419200: # 28 days
-        return QCoreApplication.translate(
-            "Common", "{0} weeks ago"
-        ).format(int(round(secDiff/604800)))
+        return "%d weeks ago" % int(round(secDiff/604800))
     elif secDiff < 3888000: # 45 days
-        return QCoreApplication.translate(
-            "Common", "a month ago"
-        )
+        return "a month ago"
     elif secDiff < 29808000: # 345 days
-        return QCoreApplication.translate(
-            "Common", "{0} months ago"
-        ).format(int(round(secDiff/2592000)))
+        return "%d months ago" % int(round(secDiff/2592000))
     elif secDiff < 47336400: # 1.5 years
-        return QCoreApplication.translate(
-            "Common", "a year ago"
-        )
+        return "a year ago"
     else:
-        return QCoreApplication.translate(
-            "Common", "{0} years ago"
-        ).format(int(round(secDiff/31557600)))
+        return "%d years ago" % int(round(secDiff/31557600))
 
 def makeFileNameSafe(theText):
     """Returns a filename safe version of the text.
@@ -308,26 +281,3 @@ def getGuiItem(theName):
         if qWidget.objectName() == theName:
             return qWidget
     return None
-
-def numberToRoman(numVal, isLower=False):
-    """Convert an integer to a roman number.
-    """
-    if not isinstance(numVal, int):
-        return "NAN"
-    if numVal < 1 or numVal > 4999:
-        return "OOR"
-
-    theValues = [
-        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
-        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
-    ]
-
-    romNum = ""
-    for theDiv, theSym in theValues:
-        n = numVal//theDiv
-        romNum += n*theSym
-        numVal -= n*theDiv
-        if numVal <= 0:
-            break
-
-    return romNum.lower() if isLower else romNum

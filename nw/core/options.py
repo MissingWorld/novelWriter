@@ -25,7 +25,6 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import nw
 import logging
 import json
 import os
@@ -47,7 +46,6 @@ class OptionState():
                 "widthCol0",
                 "widthCol1",
                 "widthCol2",
-                "widthCol3",
                 "sortCol",
                 "sortOrder",
                 "incNovel",
@@ -55,7 +53,6 @@ class OptionState():
                 "hideZeros",
                 "hideNegative",
                 "groupByDay",
-                "showIdleTime",
                 "histMax",
             },
             "GuiDocSplit": {
@@ -73,14 +70,12 @@ class OptionState():
                 "excludeBody",
                 "textFont",
                 "textSize",
-                "lineHeight",
                 "noStyling",
                 "incSynopsis",
                 "incComments",
                 "incKeywords",
                 "incBodyText",
                 "replaceTabs",
-                "replaceUCode",
             },
             "GuiOutline": {
                 "headerOrder",
@@ -91,8 +86,6 @@ class OptionState():
                 "winWidth",
                 "winHeight",
                 "replaceColW",
-                "statusColW",
-                "importColW",
             },
             "GuiProjectDetails": {
                 "winWidth",
@@ -106,10 +99,6 @@ class OptionState():
                 "countFrom",
                 "clearDouble",
             },
-            "GuiWordList": {
-                "winWidth",
-                "winHeight",
-            }
         }
 
         return
@@ -132,9 +121,9 @@ class OptionState():
             try:
                 with open(stateFile, mode="r", encoding="utf8") as inFile:
                     theState = json.load(inFile)
-            except Exception:
+            except Exception as e:
                 logger.error("Failed to load GUI options file")
-                nw.logException()
+                logger.error(str(e))
                 return False
 
         # Filter out unused variables
@@ -159,9 +148,9 @@ class OptionState():
         try:
             with open(stateFile, mode="w+", encoding="utf8") as outFile:
                 json.dump(self.theState, outFile, indent=2)
-        except Exception:
+        except Exception as e:
             logger.error("Failed to save GUI options file")
-            nw.logException()
+            logger.error(str(e))
             return False
 
         return True

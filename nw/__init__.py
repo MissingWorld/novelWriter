@@ -31,7 +31,7 @@ import logging
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QErrorMessage
 
-from nw.error import exceptionHandler, logException
+from nw.error import exceptionHandler
 from nw.config import Config
 
 ##
@@ -62,9 +62,9 @@ __license__    = "GPLv3"
 __author__     = "Veronica Berglyd Olsen"
 __maintainer__ = "Veronica Berglyd Olsen"
 __email__      = "code@vkbo.net"
-__version__    = "1.3rc1"
-__hexversion__ = "0x010300c1"
-__date__       = "2021-04-18"
+__version__    = "1.1.1"
+__hexversion__ = "0x010101f0"
+__date__       = "2021-02-21"
 __status__     = "Stable"
 __domain__     = "novelwriter.io"
 __url__        = "https://novelwriter.io"
@@ -73,6 +73,10 @@ __issuesurl__  = "https://github.com/vkbo/novelWriter/issues"
 __helpurl__    = "https://github.com/vkbo/novelWriter/discussions"
 __releaseurl__ = "https://github.com/vkbo/novelWriter/releases/latest"
 __docurl__     = "https://novelwriter.readthedocs.io"
+__credits__    = [
+    "Veronica Berglyd Olsen (developer)",
+    "Marian Lückhof (contributor, tester)"
+]
 
 ##
 #  Logging
@@ -133,7 +137,7 @@ def main(sysArgs=None):
         "This program is distributed in the hope that it will be useful,\n"
         "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
         "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the\n"
-        "GNU General Public Licence for more details.\n"
+        "GNU General Public License for more details.\n"
         "\n"
         "Usage:\n"
         " -h, --help     Print this message.\n"
@@ -217,14 +221,14 @@ def main(sysArgs=None):
             "At least Python 3.6.0 is required, found %s." % CONFIG.verPyString
         )
         errorCode |= 4
-    if CONFIG.verQtValue < 50300:
+    if CONFIG.verQtValue < 50200:
         errorData.append(
-            "At least Qt5 version 5.3 is required, found %s." % CONFIG.verQtString
+            "At least Qt5 version 5.2 is required, found %s." % CONFIG.verQtString
         )
         errorCode |= 8
-    if CONFIG.verPyQtValue < 50300:
+    if CONFIG.verPyQtValue < 50200:
         errorData.append(
-            "At least PyQt5 version 5.3 is required, found %s." % CONFIG.verPyQtString
+            "At least PyQt5 version 5.2 is required, found %s." % CONFIG.verPyQtString
         )
         errorCode |= 16
 
@@ -260,9 +264,9 @@ def main(sysArgs=None):
             bundle = NSBundle.mainBundle()
             info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
             info["CFBundleName"] = "novelWriter"
-        except ImportError:
+        except ImportError as e:
             logger.error("Failed to set application name")
-            logException()
+            logger.error(str(e))
 
     # Import GUI (after dependency checks), and launch
     from nw.guimain import GuiMain
@@ -281,7 +285,6 @@ def main(sysArgs=None):
         sys.excepthook = exceptionHandler
 
         # Launch main GUI
-        CONFIG.initLocalisation(nwApp)
         nwGUI = GuiMain()
         if not nwGUI.hasProject:
             nwGUI.showProjectLoadDialog()

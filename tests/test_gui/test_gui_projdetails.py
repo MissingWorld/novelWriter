@@ -110,5 +110,6 @@ def testGuiProjDetails_Dialog(qtbot, monkeypatch, nwGUI, nwLipsum):
     # Clean Up
     projDet._doClose()
     nwGUI.closeMain()
+    monkeypatch.undo()
 
 # END Test testGuiProjDetails_Dialog

@@ -27,12 +27,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import os
 
-from functools import partial
-
-from PyQt5.QtCore import QCoreApplication
-
-from nw.enum import nwAlert, nwItemLayout, nwItemClass
+from nw.constants import nwAlert
 from nw.common import isHandle
+from nw.constants import nwItemLayout, nwItemClass
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +48,6 @@ class NWDoc():
 
         # Internal Mapping
         self.makeAlert = self.theParent.makeAlert
-        self.tr = partial(QCoreApplication.translate, "NWDoc")
 
         return
 
@@ -115,7 +111,7 @@ class NWDoc():
                     theText += inFile.read()
 
             except Exception as e:
-                self.makeAlert([self.tr("Failed to open document file."), str(e)], nwAlert.ERROR)
+                self.makeAlert(["Failed to open document file.", str(e)], nwAlert.ERROR)
                 # Note: Document must be cleared in case of an io error,
                 # or else the auto-save or save will try to overwrite it
                 # with an empty file. Return None to alert the caller.
@@ -128,9 +124,7 @@ class NWDoc():
             return ""
 
         if showStatus and not isOrphan:
-            self.theParent.setStatus(
-                self.tr("Opened Document: {0}").format(self._theItem.itemName)
-            )
+            self.theParent.setStatus("Opened Document: %s" % self._theItem.itemName)
 
         return theText
 
@@ -164,7 +158,7 @@ class NWDoc():
                 outFile.write(docMeta)
                 outFile.write(docText)
         except Exception as e:
-            self.makeAlert([self.tr("Could not save document."), str(e)], nwAlert.ERROR)
+            self.makeAlert(["Could not save document.", str(e)], nwAlert.ERROR)
             return False
 
         # If we're here, the file was successfully saved, so we can
@@ -174,9 +168,7 @@ class NWDoc():
         os.rename(docTemp, docPath)
 
         if self._theItem is not None:
-            self.theParent.setStatus(
-                self.tr("Saved Document: {0}").format(self._theItem.itemName)
-            )
+            self.theParent.setStatus("Saved Document: %s" % self._theItem.itemName)
 
         return True
 
@@ -199,9 +191,7 @@ class NWDoc():
                     os.unlink(chkFile)
                     logger.debug("Deleted: %s" % chkFile)
                 except Exception as e:
-                    self.makeAlert(
-                        [self.tr("Could not delete document file."), str(e)], nwAlert.ERROR
-                    )
+                    self.makeAlert(["Could not delete document file.", str(e)], nwAlert.ERROR)
                     return False
 
         return True

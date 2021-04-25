@@ -28,15 +28,17 @@ from dummy import causeOSError
 from tools import readFile, writeFile
 
 from nw.core.spellcheck import NWSpellCheck, NWSpellEnchant, NWSpellSimple
+from nw.constants import nwConst
 
 @pytest.mark.core
-def testCoreSpell_Super(monkeypatch, tmpDir):
+def testCoreSpell_Super(monkeypatch, tmpDir, tmpConf):
     """Test the spell checker super class
     """
     wList = os.path.join(tmpDir, "wordlist.txt")
     writeFile(wList, "a_word\nb_word\nc_word\n")
 
     spChk = NWSpellCheck()
+    spChk.mainConf = tmpConf
 
     # Check that dummy functions return results that reflects that spell
     # checking is effectively disabled
@@ -46,18 +48,22 @@ def testCoreSpell_Super(monkeypatch, tmpDir):
     assert spChk.listDictionaries() == []
     assert spChk.describeDict() == ("", "")
 
+    # Check language info
+    assert NWSpellCheck.expandLanguage("en") == "English"
+    assert NWSpellCheck.expandLanguage("en_GB") == "English (GB)"
+
     # Add a word to the user's dictionary
     assert spChk._readProjectDictionary("dummy") is False
-    with monkeypatch.context() as mp:
-        mp.setattr("builtins.open", causeOSError)
-        assert spChk._readProjectDictionary(wList) is False
+    monkeypatch.setattr("builtins.open", causeOSError)
+    assert spChk._readProjectDictionary(wList) is False
+    monkeypatch.undo()
     assert spChk._readProjectDictionary(wList) is True
     assert spChk.projectDict == wList
 
     # Cannot write to file
-    with monkeypatch.context() as mp:
-        mp.setattr("builtins.open", causeOSError)
-        assert spChk.addWord("d_word") is False
+    monkeypatch.setattr("builtins.open", causeOSError)
+    assert spChk.addWord("d_word") is False
+    monkeypatch.undo()
     assert readFile(wList) == "a_word\nb_word\nc_word\n"
 
     # First time, OK
@@ -71,26 +77,28 @@ def testCoreSpell_Super(monkeypatch, tmpDir):
 # END Test testCoreSpell_Super
 
 @pytest.mark.core
-def testCoreSpell_Enchant(monkeypatch, tmpDir):
+def testCoreSpell_Enchant(monkeypatch, tmpDir, tmpConf):
     """Test the pyenchant spell checker
     """
     wList = os.path.join(tmpDir, "wordlist.txt")
     writeFile(wList, "a_word\nb_word\nc_word\n")
 
     # Block the enchant package (and trigger the dummy class)
-    with monkeypatch.context() as mp:
-        mp.setitem(sys.modules, "enchant", None)
-        spChk = NWSpellEnchant()
+    monkeypatch.setitem(sys.modules, "enchant", None)
+    spChk = NWSpellEnchant()
 
-        spChk.setLanguage("en", wList)
-        assert spChk.setLanguage("", "") is None
-        assert spChk.checkWord("")
-        assert spChk.suggestWords("") == []
-        assert spChk.listDictionaries() == []
-        assert spChk.describeDict() == ("", "")
+    spChk.setLanguage("en", wList)
+    assert spChk.setLanguage("", "") is None
+    assert spChk.checkWord("")
+    assert spChk.suggestWords("") == []
+    assert spChk.listDictionaries() == []
+    assert spChk.describeDict() == ("", "")
+
+    monkeypatch.undo()
 
     # Load the proper enchant package
     spChk = NWSpellEnchant()
+    spChk.mainConf = tmpConf
     spChk.setLanguage("en", wList)
 
     assert spChk.checkWord("a_word")
@@ -115,7 +123,7 @@ def testCoreSpell_Enchant(monkeypatch, tmpDir):
 # END Test testCoreSpell_Enchant
 
 @pytest.mark.core
-def testCoreSpell_Simple(monkeypatch, tmpDir):
+def testCoreSpell_Simple(monkeypatch, tmpDir, tmpConf):
     """Test the fallback simple spell checker
     """
     wList = os.path.join(tmpDir, "wordlist.txt")
@@ -124,14 +132,15 @@ def testCoreSpell_Simple(monkeypatch, tmpDir):
     writeFile(wDict, "# Comment\ne_word\nf_word\ng_word\n")
 
     spChk = NWSpellSimple()
+    spChk.mainConf = tmpConf
     spChk.mainConf.dictPath = tmpDir
 
     # Load dictionary, but fail
-    with monkeypatch.context() as mp:
-        mp.setattr("builtins.open", causeOSError)
-        spChk.setLanguage("en", wList)
-        assert spChk.spellLanguage is None
-        assert spChk.theWords == set(spChk.projDict)
+    monkeypatch.setattr("builtins.open", causeOSError)
+    spChk.setLanguage("en", wList)
+    assert spChk.spellLanguage is None
+    assert spChk.theWords == set(spChk.projDict)
+    monkeypatch.undo()
 
     # Load dictionary properly
     spChk.setLanguage("en", wList)
@@ -159,9 +168,9 @@ def testCoreSpell_Simple(monkeypatch, tmpDir):
     assert "d_word" in wSuggest
 
     # Break the matching
-    with monkeypatch.context() as mp:
-        mp.setattr("difflib.get_close_matches", lambda *args, **kwargs: [""])
-        assert spChk.suggestWords("word") == []
+    monkeypatch.setattr("difflib.get_close_matches", lambda *args, **kwargs: [""])
+    assert spChk.suggestWords("word") == []
+    monkeypatch.undo()
 
     # Capitalisation
     wSuggest = spChk.suggestWords("D_wrod")
@@ -169,11 +178,11 @@ def testCoreSpell_Simple(monkeypatch, tmpDir):
     assert "D_word" in wSuggest
 
     # List dictionaries
-    assert spChk.listDictionaries() == [("en", "difflib")]
+    assert spChk.listDictionaries() == [("en", "English [%s]" % nwConst.SP_INTERNAL)]
 
     # Description
     aTag, aName = spChk.describeDict()
     assert aTag == "en"
-    assert aName == ""
+    assert aName == nwConst.SP_INTERNAL
 
 # END Test testCoreSpell_Simple

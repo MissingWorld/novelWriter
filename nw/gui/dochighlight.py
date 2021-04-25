@@ -34,7 +34,7 @@ from PyQt5.QtGui import (
     QColor, QTextCharFormat, QFont, QSyntaxHighlighter, QBrush
 )
 
-from nw.constants import nwRegEx, nwUnicode
+from nw.constants import nwUnicode, nwRegEx
 
 logger = logging.getLogger(__name__)
 

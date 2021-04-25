@@ -28,12 +28,10 @@ from tools import cmpFiles
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QAction, QMessageBox, QDialog
+from PyQt5.QtWidgets import QAction, QMessageBox
 
-from nw.dialogs.itemeditor import GuiItemEditor
-from nw.gui.doceditor import GuiDocEditor
 from nw.gui.projtree import GuiProjectTree
-from nw.enum import nwItemType, nwDocAction, nwWidget
+from nw.constants import nwItemType, nwDocAction
 
 keyDelay = 2
 typeDelay = 1
@@ -45,11 +43,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     """
     # Block message box
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(QMessageBox, "information", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(GuiItemEditor, "exec_", lambda *args: None)
-    monkeypatch.setattr(GuiItemEditor, "result", lambda *args: QDialog.Accepted)
     monkeypatch.setattr(GuiProjectTree, "hasFocus", lambda *args: True)
-    monkeypatch.setattr(GuiDocEditor, "hasFocus", lambda *args: True)
 
     # Create new, save, close project
     nwGUI.theProject.projTree.setSeed(42)
@@ -117,14 +111,14 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     nwGUI.mainConf.autoScroll = True
 
     # Add a Character File
-    nwGUI.switchFocus(nwWidget.TREE)
+    nwGUI.setFocus(1)
     nwGUI.treeView.clearSelection()
     nwGUI.treeView._getTreeItem("71ee45a3c0db9").setSelected(True)
     nwGUI.treeView.newTreeItem(nwItemType.FILE, None)
     assert nwGUI.openSelectedItem()
 
     # Type something into the document
-    nwGUI.switchFocus(nwWidget.EDITOR)
+    nwGUI.setFocus(2)
     qtbot.keyClick(nwGUI.docEditor, "a", modifier=Qt.ControlModifier, delay=keyDelay)
     for c in "# Jane Doe":
         qtbot.keyClick(nwGUI.docEditor, c, delay=typeDelay)
@@ -139,14 +133,14 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     qtbot.keyClick(nwGUI.docEditor, Qt.Key_Return, delay=keyDelay)
 
     # Add a Plot File
-    nwGUI.switchFocus(nwWidget.TREE)
+    nwGUI.setFocus(1)
     nwGUI.treeView.clearSelection()
     nwGUI.treeView._getTreeItem("44cb730c42048").setSelected(True)
     nwGUI.treeView.newTreeItem(nwItemType.FILE, None)
     assert nwGUI.openSelectedItem()
 
     # Type something into the document
-    nwGUI.switchFocus(nwWidget.EDITOR)
+    nwGUI.setFocus(2)
     qtbot.keyClick(nwGUI.docEditor, "a", modifier=Qt.ControlModifier, delay=keyDelay)
     for c in "# Main Plot":
         qtbot.keyClick(nwGUI.docEditor, c, delay=typeDelay)
@@ -161,7 +155,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     qtbot.keyClick(nwGUI.docEditor, Qt.Key_Return, delay=keyDelay)
 
     # Add a World File
-    nwGUI.switchFocus(nwWidget.TREE)
+    nwGUI.setFocus(1)
     nwGUI.treeView.clearSelection()
     nwGUI.treeView._getTreeItem("811786ad1ae74").setSelected(True)
     nwGUI.treeView.newTreeItem(nwItemType.FILE, None)
@@ -173,7 +167,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     nwGUI.docEditor.replaceText("")
 
     # Type something into the document
-    nwGUI.switchFocus(nwWidget.EDITOR)
+    nwGUI.setFocus(2)
     qtbot.keyClick(nwGUI.docEditor, "a", modifier=Qt.ControlModifier, delay=keyDelay)
     for c in "# Main Location":
         qtbot.keyClick(nwGUI.docEditor, c, delay=typeDelay)
@@ -192,7 +186,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     nwGUI._autoSaveProject()
 
     # Select the 'New Scene' file
-    nwGUI.switchFocus(nwWidget.TREE)
+    nwGUI.setFocus(1)
     nwGUI.treeView.clearSelection()
     nwGUI.treeView._getTreeItem("73475cb40a568").setExpanded(True)
     nwGUI.treeView._getTreeItem("31489056e0916").setExpanded(True)
@@ -200,7 +194,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     assert nwGUI.openSelectedItem()
 
     # Type something into the document
-    nwGUI.switchFocus(nwWidget.EDITOR)
+    nwGUI.setFocus(2)
     qtbot.keyClick(nwGUI.docEditor, "a", modifier=Qt.ControlModifier, delay=keyDelay)
     for c in "# Novel":
         qtbot.keyClick(nwGUI.docEditor, c, delay=typeDelay)
@@ -300,7 +294,7 @@ def testGuiEditor_Main(qtbot, monkeypatch, nwGUI, fncDir, fncProj, refDir, outDi
     qtbot.wait(stepDelay)
 
     # Open and view the edited document
-    nwGUI.switchFocus(nwWidget.VIEWER)
+    nwGUI.setFocus(3)
     assert nwGUI.openDocument("0e17daca5f3e1")
     assert nwGUI.viewDocument("0e17daca5f3e1")
     qtbot.wait(stepDelay)
@@ -359,7 +353,6 @@ def testGuiEditor_Search(qtbot, monkeypatch, nwGUI, nwLipsum):
     """
     # Block message box
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(GuiDocEditor, "hasFocus", lambda *args: True)
 
     nwGUI.theProject.projTree.setSeed(42)
     assert nwGUI.openProject(nwLipsum)
@@ -510,7 +503,7 @@ def testGuiEditor_Search(qtbot, monkeypatch, nwGUI, nwLipsum):
     assert abs(nwGUI.docEditor.getCursorPosition() - 1127) < 3
 
     # Toggle Replace
-    nwGUI.docEditor.beginReplace()
+    nwGUI.docEditor._beginReplace()
 
     # MonkeyPatch the focus cycle. We can't really test this very well, other than
     # check that the tabs aren't captured when the main editor has focus

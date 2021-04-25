@@ -31,8 +31,9 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel
 
-from nw.enum import nwItemClass, nwItemType, nwItemLayout
-from nw.constants import trConst, nwLabels
+from nw.constants import (
+    nwLabels, nwItemClass, nwItemType, nwItemLayout
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class GuiItemDetails(QWidget):
         self.fntValue.setPointSizeF(0.9*fPt)
 
         # Label
-        self.labelName = QLabel(self.tr("Label"))
+        self.labelName = QLabel("Label")
         self.labelName.setFont(self.fntLabel)
         self.labelName.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
 
@@ -79,7 +80,7 @@ class GuiItemDetails(QWidget):
         self.labelData.setWordWrap(True)
 
         # Status
-        self.statusName = QLabel(self.tr("Status"))
+        self.statusName = QLabel("Status")
         self.statusName.setFont(self.fntLabel)
         self.statusName.setAlignment(Qt.AlignLeft)
 
@@ -91,7 +92,7 @@ class GuiItemDetails(QWidget):
         self.statusData.setAlignment(Qt.AlignLeft)
 
         # Class
-        self.className = QLabel(self.tr("Class"))
+        self.className = QLabel("Class")
         self.className.setFont(self.fntLabel)
         self.className.setAlignment(Qt.AlignLeft)
 
@@ -104,7 +105,7 @@ class GuiItemDetails(QWidget):
         self.classData.setAlignment(Qt.AlignLeft)
 
         # Layout
-        self.layoutName = QLabel(self.tr("Layout"))
+        self.layoutName = QLabel("Layout")
         self.layoutName.setFont(self.fntLabel)
         self.layoutName.setAlignment(Qt.AlignLeft)
 
@@ -117,7 +118,7 @@ class GuiItemDetails(QWidget):
         self.layoutData.setAlignment(Qt.AlignLeft)
 
         # Character Count
-        self.cCountName = QLabel("  "+self.tr("Characters"))
+        self.cCountName = QLabel("  Characters")
         self.cCountName.setFont(self.fntLabel)
         self.cCountName.setAlignment(Qt.AlignRight)
 
@@ -126,7 +127,7 @@ class GuiItemDetails(QWidget):
         self.cCountData.setAlignment(Qt.AlignRight)
 
         # Word Count
-        self.wCountName = QLabel("  "+self.tr("Words"))
+        self.wCountName = QLabel("  Words")
         self.wCountName.setFont(self.fntLabel)
         self.wCountName.setAlignment(Qt.AlignRight)
 
@@ -135,7 +136,7 @@ class GuiItemDetails(QWidget):
         self.wCountData.setAlignment(Qt.AlignRight)
 
         # Paragraph Count
-        self.pCountName = QLabel("  "+self.tr("Paragraphs"))
+        self.pCountName = QLabel("  Paragraphs")
         self.pCountName.setFont(self.fntLabel)
         self.pCountName.setAlignment(Qt.AlignRight)
 
@@ -258,17 +259,17 @@ class GuiItemDetails(QWidget):
 
         iPx = int(round(0.8*self.theTheme.baseIconSize))
         self.statusFlag.setPixmap(flagIcon.pixmap(iPx, iPx))
-        self.classFlag.setText(nwLabels.CLASS_FLAG[nwItem.itemClass])  # NO-I18N
+        self.classFlag.setText(nwLabels.CLASS_FLAG[nwItem.itemClass])
 
         if nwItem.itemLayout == nwItemLayout.NO_LAYOUT:
             self.layoutFlag.setText("-")
         else:
-            self.layoutFlag.setText(nwLabels.LAYOUT_FLAG[nwItem.itemLayout])  # NO-I18N
+            self.layoutFlag.setText(nwLabels.LAYOUT_FLAG[nwItem.itemLayout])
 
         self.labelData.setText(theLabel)
         self.statusData.setText(nwItem.itemStatus)
-        self.classData.setText(trConst(nwLabels.CLASS_NAME[nwItem.itemClass]))
-        self.layoutData.setText(trConst(nwLabels.LAYOUT_NAME[nwItem.itemLayout]))
+        self.classData.setText(nwLabels.CLASS_NAME[nwItem.itemClass])
+        self.layoutData.setText(nwLabels.LAYOUT_NAME[nwItem.itemLayout])
 
         if nwItem.itemType == nwItemType.FILE:
             self.cCountData.setText(f"{nwItem.charCount:n}")

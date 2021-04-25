@@ -34,14 +34,10 @@ import os
 from time import time
 
 from PyQt5.Qt import PYQT_VERSION_STR
-from PyQt5.QtCore import (
-    QT_VERSION_STR, QStandardPaths, QSysInfo, QLocale, QLibraryInfo,
-    QTranslator
-)
+from PyQt5.QtCore import QT_VERSION_STR, QStandardPaths, QSysInfo
 
-from nw.error import logException
-from nw.common import splitVersionNumber, formatTimeStamp
 from nw.constants import nwConst, nwFiles, nwUnicode
+from nw.common import splitVersionNumber, formatTimeStamp
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +48,6 @@ class Config:
     CNF_BOOL  = 2
     CNF_S_LST = 3
     CNF_I_LST = 4
-
-    LANG_NW   = 1
-    LANG_PROJ = 2
 
     def __init__(self):
 
@@ -90,21 +83,14 @@ class Config:
         self.guiSyntax   = "default_light"
         self.guiIcons    = "typicons_colour_light"
         self.guiDark     = False # Load icons for dark backgrounds, if available
+        self.guiLang     = "en"  # Hardcoded for now since the GUI is only in English
         self.guiFont     = ""    # Defaults to system default font
-        self.guiFontSize = 11    # Is overridden if system default is loaded
+        self.guiFontSize = 11
         self.guiScale    = 1.0   # Set automatically by Theme class
         self.lastNotes   = "0x0" # The latest release notes that have been shown
 
-        ## Localisation
-        self.qLocal     = QLocale.system()
-        self.guiLang    = self.qLocal.name()
-        self.qtLangPath = QLibraryInfo.location(QLibraryInfo.TranslationsPath)
-        self.nwLangPath = None
-        self.qtTrans    = {}
-
         ## Sizes
         self.winGeometry   = [1200, 650]
-        self.prefGeometry  = [700, 615]
         self.treeColWidth  = [200, 50, 30]
         self.novelColWidth = [200, 50]
         self.projColWidth  = [200, 60, 140]
@@ -157,16 +143,10 @@ class Config:
         self.allowOpenDQuote = True  # Allow open-ended double quotes
         self.highlightEmph   = True  # Add colour to text emphasis
 
-        self.stopWhenIdle    = True  # Stop the status bar clock when the user is idle
-        self.userIdleTime    = 300   # Time of inactivity to consider user idle
-
         ## User-Selected Symbols
         self.fmtApostrophe   = nwUnicode.U_RSQUO
         self.fmtSingleQuotes = [nwUnicode.U_LSQUO, nwUnicode.U_RSQUO]
         self.fmtDoubleQuotes = [nwUnicode.U_LDQUO, nwUnicode.U_RDQUO]
-        self.fmtPadBefore    = ""
-        self.fmtPadAfter     = ""
-        self.fmtPadThin      = False
 
         ## Spell Checking
         self.spellTool     = None
@@ -306,9 +286,6 @@ class Config:
         self.iconPath  = os.path.join(self.assetPath, "icons")
         self.appIcon   = os.path.join(self.iconPath, "novelwriter.svg")
 
-        # Internationalisation
-        self.nwLangPath = os.path.join(self.appRoot, "i18n")
-
         logger.verbose("App path: %s" % self.appPath)
         logger.verbose("Last path: %s" % self.lastPath)
 
@@ -319,7 +296,7 @@ class Config:
                 os.mkdir(self.confPath)
             except Exception as e:
                 logger.error("Could not create folder: %s" % self.confPath)
-                logException()
+                logger.error(str(e))
                 self.hasError = True
                 self.errData.append("Could not create folder: %s" % self.confPath)
                 self.errData.append(str(e))
@@ -342,7 +319,7 @@ class Config:
                     os.mkdir(self.dataPath)
                 except Exception as e:
                     logger.error("Could not create folder: %s" % self.dataPath)
-                    logException()
+                    logger.error(str(e))
                     self.hasError = True
                     self.errData.append("Could not create folder: %s" % self.dataPath)
                     self.errData.append(str(e))
@@ -373,57 +350,6 @@ class Config:
 
         return True
 
-    def initLocalisation(self, nwApp):
-        """Initialise the localisation of the GUI.
-        """
-        self.qLocal = QLocale(self.guiLang)
-        QLocale.setDefault(self.qLocal)
-        self.qtTrans = {}
-
-        langList = [
-            (self.qtLangPath, "qtbase"), # Qt 5.x
-            (self.nwLangPath, "qtbase"), # Alternative Qt 5.x
-            (self.nwLangPath, "nw"),     # novelWriter
-        ]
-        for lngPath, lngBase in langList:
-            for lngCode in self.qLocal.uiLanguages():
-                qTrans = QTranslator()
-                lngFile = "%s_%s" % (lngBase, lngCode.replace("-", "_"))
-                if lngFile not in self.qtTrans:
-                    if qTrans.load(lngFile, lngPath):
-                        logger.debug("Loaded: %s" % qTrans.filePath())
-                        nwApp.installTranslator(qTrans)
-                        self.qtTrans[lngFile] = qTrans
-
-        return
-
-    def listLanguages(self, lngSet):
-        """List localisation files in the i18n folder. The default GUI
-        language 'en_GB' is British English.
-        """
-        if lngSet == self.LANG_NW:
-            fPre = "nw_"
-            fExt = ".qm"
-            langList = {"en_GB": QLocale("en_GB").nativeLanguageName().title()}
-        elif lngSet == self.LANG_PROJ:
-            fPre = "project_"
-            fExt = ".json"
-            langList = {"en": "English"}
-        else:
-            return []
-
-        for qmFile in os.listdir(self.nwLangPath):
-            if not os.path.isfile(os.path.join(self.nwLangPath, qmFile)):
-                continue
-            if not qmFile.startswith(fPre) or not qmFile.endswith(fExt):
-                continue
-            qmLang = qmFile[len(fPre):-len(fExt)]
-            qmName = QLocale(qmLang).nativeLanguageName().title()
-            if qmLang and qmName and qmLang != "en":
-                langList[qmLang] = qmName
-
-        return sorted(langList.items(), key=lambda x: x[0])
-
     def loadConfig(self):
         """Load preferences from file and replace default settings.
         """
@@ -438,7 +364,7 @@ class Config:
                 cnfParse.read_file(inFile)
         except Exception as e:
             logger.error("Could not load config file")
-            logException()
+            logger.error(str(e))
             self.hasError = True
             self.errData.append("Could not load config file")
             self.errData.append(str(e))
@@ -467,17 +393,11 @@ class Config:
         self.lastNotes = self._parseLine(
             cnfParse, cnfSec, "lastnotes", self.CNF_STR, self.lastNotes
         )
-        self.guiLang = self._parseLine(
-            cnfParse, cnfSec, "guilang", self.CNF_STR, self.guiLang
-        )
 
         ## Sizes
         cnfSec = "Sizes"
         self.winGeometry = self._parseLine(
             cnfParse, cnfSec, "geometry", self.CNF_I_LST, self.winGeometry
-        )
-        self.prefGeometry = self._parseLine(
-            cnfParse, cnfSec, "preferences", self.CNF_I_LST, self.prefGeometry
         )
         self.treeColWidth = self._parseLine(
             cnfParse, cnfSec, "treecols", self.CNF_I_LST, self.treeColWidth
@@ -581,15 +501,6 @@ class Config:
         self.fmtDoubleQuotes = self._parseLine(
             cnfParse, cnfSec, "fmtdoublequote", self.CNF_S_LST, self.fmtDoubleQuotes
         )
-        self.fmtPadBefore = self._parseLine(
-            cnfParse, cnfSec, "fmtpadbefore", self.CNF_STR, self.fmtPadBefore
-        )
-        self.fmtPadAfter = self._parseLine(
-            cnfParse, cnfSec, "fmtpadafter", self.CNF_STR, self.fmtPadAfter
-        )
-        self.fmtPadThin = self._parseLine(
-            cnfParse, cnfSec, "fmtpadthin", self.CNF_BOOL, self.fmtPadThin
-        )
         self.spellTool = self._parseLine(
             cnfParse, cnfSec, "spelltool", self.CNF_STR, self.spellTool
         )
@@ -619,12 +530,6 @@ class Config:
         )
         self.highlightEmph = self._parseLine(
             cnfParse, cnfSec, "highlightemph", self.CNF_BOOL, self.highlightEmph
-        )
-        self.stopWhenIdle = self._parseLine(
-            cnfParse, cnfSec, "stopwhenidle", self.CNF_BOOL, self.stopWhenIdle
-        )
-        self.userIdleTime = self._parseLine(
-            cnfParse, cnfSec, "useridletime", self.CNF_INT, self.userIdleTime
         )
 
         ## Backup
@@ -711,13 +616,11 @@ class Config:
         cnfParse.set(cnfSec, "guifont",     str(self.guiFont))
         cnfParse.set(cnfSec, "guifontsize", str(self.guiFontSize))
         cnfParse.set(cnfSec, "lastnotes",   str(self.lastNotes))
-        cnfParse.set(cnfSec, "guilang",     str(self.guiLang))
 
         ## Sizes
         cnfSec = "Sizes"
         cnfParse.add_section(cnfSec)
         cnfParse.set(cnfSec, "geometry",    self._packList(self.winGeometry))
-        cnfParse.set(cnfSec, "preferences", self._packList(self.prefGeometry))
         cnfParse.set(cnfSec, "treecols",    self._packList(self.treeColWidth))
         cnfParse.set(cnfSec, "novelcols",   self._packList(self.novelColWidth))
         cnfParse.set(cnfSec, "projcols",    self._packList(self.projColWidth))
@@ -758,9 +661,6 @@ class Config:
         cnfParse.set(cnfSec, "autoscrollpos",   str(self.autoScrollPos))
         cnfParse.set(cnfSec, "fmtsinglequote",  self._packList(self.fmtSingleQuotes))
         cnfParse.set(cnfSec, "fmtdoublequote",  self._packList(self.fmtDoubleQuotes))
-        cnfParse.set(cnfSec, "fmtpadbefore",    str(self.fmtPadBefore))
-        cnfParse.set(cnfSec, "fmtpadafter",     str(self.fmtPadAfter))
-        cnfParse.set(cnfSec, "fmtpadthin",      str(self.fmtPadThin))
         cnfParse.set(cnfSec, "spelltool",       str(self.spellTool))
         cnfParse.set(cnfSec, "spellcheck",      str(self.spellLanguage))
         cnfParse.set(cnfSec, "showtabsnspaces", str(self.showTabsNSpaces))
@@ -771,8 +671,6 @@ class Config:
         cnfParse.set(cnfSec, "allowopensquote", str(self.allowOpenSQuote))
         cnfParse.set(cnfSec, "allowopendquote", str(self.allowOpenDQuote))
         cnfParse.set(cnfSec, "highlightemph",   str(self.highlightEmph))
-        cnfParse.set(cnfSec, "stopwhenidle",    str(self.stopWhenIdle))
-        cnfParse.set(cnfSec, "useridletime",    str(self.userIdleTime))
 
         ## Backup
         cnfSec = "Backup"
@@ -807,7 +705,7 @@ class Config:
             self.confChanged = False
         except Exception as e:
             logger.error("Could not save config file")
-            logException()
+            logger.error(str(e))
             self.hasError = True
             self.errData.append("Could not save config file")
             self.errData.append(str(e))
@@ -941,12 +839,6 @@ class Config:
             self.confChanged = True
         return True
 
-    def setPreferencesSize(self, newWidth, newHeight):
-        self.prefGeometry[0] = int(newWidth/self.guiScale)
-        self.prefGeometry[1] = int(newHeight/self.guiScale)
-        self.confChanged = True
-        return True
-
     def setTreeColWidths(self, colWidths):
         self.treeColWidth = [int(x/self.guiScale) for x in colWidths]
         self.confChanged = True
@@ -1009,9 +901,6 @@ class Config:
 
     def getWinSize(self):
         return [int(x*self.guiScale) for x in self.winGeometry]
-
-    def getPreferencesSize(self):
-        return [int(x*self.guiScale) for x in self.prefGeometry]
 
     def getTreeColWidths(self):
         return [int(x*self.guiScale) for x in self.treeColWidth]
@@ -1092,9 +981,9 @@ class Config:
                         return self._unpackList(
                             cnfParse.get(cnfSec, cnfName), cnfDefault, self.CNF_S_LST
                         )
-                except ValueError:
+                except ValueError as e:
                     logger.error("Failed to load value from config file.")
-                    logException()
+                    logger.error(str(e))
                     return cnfDefault
 
         return cnfDefault
@@ -1116,7 +1005,7 @@ class Config:
         try:
             import enchant # noqa: F401
             self.hasEnchant = True
-            logger.debug("Checking package 'pyenchant': OK")
+            logger.debug("Checking package 'pyenchant': Ok")
         except Exception:
             self.hasEnchant = False
             logger.debug("Checking package 'pyenchant': Missing")
@@ -1124,7 +1013,7 @@ class Config:
         assistPath = shutil.which("assistant")
         self.hasAssistant = assistPath is not None
         if self.hasAssistant:
-            logger.debug("Checking executable 'assistant': OK")
+            logger.debug("Checking executable 'assistant': Ok")
         else:
             logger.debug("Checking executable 'assistant': Missing")
 

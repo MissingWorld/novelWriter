@@ -27,9 +27,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextCursor, QTextBlock
 from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox
 
-from nw.gui.doceditor import GuiDocEditor
-from nw.enum import nwDocAction, nwDocInsert, nwWidget
-from nw.constants import nwKeyWords, nwUnicode
+from nw.constants import nwUnicode, nwDocAction, nwDocInsert, nwKeyWords
 
 keyDelay = 2
 typeDelay = 1
@@ -41,7 +39,6 @@ def testGuiMenu_EditFormat(qtbot, monkeypatch, nwGUI, nwLipsum):
     """
     # Block message box
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(GuiDocEditor, "hasFocus", lambda *args: True)
 
     # Test Document Action with No Project
     assert not nwGUI.docEditor.docAction(nwDocAction.COPY)
@@ -367,7 +364,7 @@ def testGuiMenu_Insert(qtbot, monkeypatch, nwGUI, fncDir, fncProj):
 
     assert nwGUI.treeView._getTreeItem("0e17daca5f3e1") is not None
 
-    nwGUI.switchFocus(nwWidget.TREE)
+    nwGUI.setFocus(1)
     nwGUI.treeView.clearSelection()
     nwGUI.treeView._getTreeItem("0e17daca5f3e1").setSelected(True)
     assert nwGUI.openSelectedItem()
@@ -502,10 +499,6 @@ def testGuiMenu_Insert(qtbot, monkeypatch, nwGUI, fncDir, fncProj):
     assert nwGUI.docEditor.getText() == "Stuff\n%s: " % nwKeyWords.POV_KEY
 
     nwGUI.docEditor.setText("Stuff")
-    nwGUI.mainMenu.mInsKWItems[nwKeyWords.FOCUS_KEY][0].activate(QAction.Trigger)
-    assert nwGUI.docEditor.getText() == "Stuff\n%s: " % nwKeyWords.FOCUS_KEY
-
-    nwGUI.docEditor.setText("Stuff")
     nwGUI.mainMenu.mInsKWItems[nwKeyWords.CHAR_KEY][0].activate(QAction.Trigger)
     assert nwGUI.docEditor.getText() == "Stuff\n%s: " % nwKeyWords.CHAR_KEY
 
@@ -535,9 +528,9 @@ def testGuiMenu_Insert(qtbot, monkeypatch, nwGUI, fncDir, fncProj):
 
     # Faulty Keyword Inserts
     assert not nwGUI.docEditor.insertKeyWord("blabla")
-    with monkeypatch.context() as mp:
-        mp.setattr(QTextBlock, "isValid", lambda *args, **kwards: False)
-        assert not nwGUI.docEditor.insertKeyWord(nwKeyWords.TAG_KEY)
+    monkeypatch.setattr(QTextBlock, "isValid", lambda *args, **kwards: False)
+    assert not nwGUI.docEditor.insertKeyWord(nwKeyWords.TAG_KEY)
+    monkeypatch.undo()
 
     nwGUI.docEditor.clear()
 
@@ -596,9 +589,10 @@ def testGuiMenu_Insert(qtbot, monkeypatch, nwGUI, fncDir, fncProj):
     nwGUI.mainMenu.aFileDetails.activate(QAction.Trigger)
 
     theBits = theMessage.split("<br>")
-    assert len(theBits) == 2
-    assert theBits[0] == "The currently open file is saved in:"
-    assert theBits[1] == os.path.join(fncProj, "content", "0e17daca5f3e1.nwd")
+    assert len(theBits) == 3
+    assert theBits[0] == "File details for the currently open file"
+    assert theBits[1] == "Handle: 0e17daca5f3e1"
+    assert theBits[2] == "Location: %s" % os.path.join(fncProj, "content", "0e17daca5f3e1.nwd")
 
     # qtbot.stopForInteraction()
 

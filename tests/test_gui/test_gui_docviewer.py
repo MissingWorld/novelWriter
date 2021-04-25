@@ -26,7 +26,7 @@ from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import qApp, QAction, QMessageBox
 
-from nw.enum import nwDocAction
+from nw.constants import nwDocAction
 
 keyDelay = 2
 typeDelay = 1
@@ -38,7 +38,6 @@ def testGuiViewer_Main(qtbot, monkeypatch, nwGUI, nwLipsum):
     """
     # Block message box
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(QMessageBox, "information", lambda *args: QMessageBox.Yes)
 
     # Open project
     nwGUI.theProject.projTree.setSeed(42)

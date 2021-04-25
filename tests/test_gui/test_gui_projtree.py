@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QAction, QMessageBox
 
 from nw.guimain import GuiMain
 from nw.gui.projtree import GuiProjectTree
-from nw.enum import nwItemType, nwItemClass
+from nw.constants import nwItemType, nwItemClass
 
 @pytest.mark.gui
 def testGuiProjTree_TreeItems(qtbot, caplog, monkeypatch, nwGUI, nwMinimal):
@@ -38,10 +38,8 @@ def testGuiProjTree_TreeItems(qtbot, caplog, monkeypatch, nwGUI, nwMinimal):
     """
     # Block message box
     monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(QMessageBox, "critical", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(QMessageBox, "warning", lambda *args: QMessageBox.Yes)
-    monkeypatch.setattr(QMessageBox, "information", lambda *args: QMessageBox.Yes)
     monkeypatch.setattr(GuiMain, "editItem", lambda *args: None)
+    monkeypatch.setattr(GuiProjectTree, "hasFocus", lambda *args: True)
 
     nwGUI.theProject.projTree.setSeed(42)
     nwTree = nwGUI.treeView
@@ -98,12 +96,12 @@ def testGuiProjTree_TreeItems(qtbot, caplog, monkeypatch, nwGUI, nwMinimal):
     nwTree.setSelectedHandle("8c659a11cd429")
 
     # Shift focus and try to move item
-    monkeypatch.setattr(GuiProjectTree, "hasFocus", lambda *args: False)
+    monkeypatch.setattr("PyQt5.QtWidgets.qApp.focusWidget", lambda: None)
     assert not nwTree.moveTreeItem(1)
     assert nwTree.getTreeFromHandle("a6d311a93600a") == [
         "a6d311a93600a", "f5ab3e30151e1", "8c659a11cd429", "44cb730c42048", "71ee45a3c0db9"
     ]
-    monkeypatch.setattr(GuiProjectTree, "hasFocus", lambda *args: True)
+    monkeypatch.setattr("PyQt5.QtWidgets.qApp.focusWidget", lambda: nwTree)
 
     # Move second item up twice (should give same result)
     nwGUI.mainMenu.aMoveUp.activate(QAction.Trigger)
@@ -129,15 +127,6 @@ def testGuiProjTree_TreeItems(qtbot, caplog, monkeypatch, nwGUI, nwMinimal):
         "a6d311a93600a", "f5ab3e30151e1", "44cb730c42048", "71ee45a3c0db9", "8c659a11cd429"
     ]
     nwGUI.mainMenu.aMoveDown.activate(QAction.Trigger)
-    assert nwTree.getTreeFromHandle("a6d311a93600a") == [
-        "a6d311a93600a", "f5ab3e30151e1", "44cb730c42048", "71ee45a3c0db9", "8c659a11cd429"
-    ]
-
-    # Move up twice, and undo
-    nwTree._lastMove = {}
-    nwGUI.mainMenu.aMoveUp.activate(QAction.Trigger)
-    nwGUI.mainMenu.aMoveUp.activate(QAction.Trigger)
-    nwGUI.mainMenu.aMoveUndo.activate(QAction.Trigger)
     assert nwTree.getTreeFromHandle("a6d311a93600a") == [
         "a6d311a93600a", "f5ab3e30151e1", "44cb730c42048", "71ee45a3c0db9", "8c659a11cd429"
     ]

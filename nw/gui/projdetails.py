@@ -35,9 +35,9 @@ from PyQt5.QtWidgets import (
     QLabel, QSpinBox, QGridLayout, QHBoxLayout, QLineEdit, QAbstractItemView
 )
 
-from nw.common import numberToRoman
-from nw.constants import nwUnicode
 from nw.gui.custom import PagedDialog, QSwitch
+from nw.constants import nwUnicode
+from nw.core import numberToRoman
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class GuiProjectDetails(PagedDialog):
         self.theProject = theProject
         self.optState   = theProject.optState
 
-        self.setWindowTitle(self.tr("Project Details"))
+        self.setWindowTitle("Project Details")
 
         wW = self.mainConf.pxInt(600)
         wH = self.mainConf.pxInt(400)
@@ -69,11 +69,10 @@ class GuiProjectDetails(PagedDialog):
         self.tabMain     = GuiProjectDetailsMain(self.theParent, self.theProject)
         self.tabContents = GuiProjectDetailsContents(self.theParent, self.theProject)
 
-        self.addTab(self.tabMain,     self.tr("Overview"))
-        self.addTab(self.tabContents, self.tr("Contents"))
+        self.addTab(self.tabMain,     "Overview")
+        self.addTab(self.tabContents, "Contents")
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Close)
-        self.buttonBox.button(QDialogButtonBox.Close).setText(self.tr("Close"))
         self.buttonBox.rejected.connect(self._doClose)
         self.addControls(self.buttonBox)
 
@@ -155,9 +154,7 @@ class GuiProjectDetailsMain(QWidget):
         self.bookTitle.setAlignment(Qt.AlignHCenter)
         self.bookTitle.setWordWrap(True)
 
-        self.projName = QLabel(
-            self.tr("Working Title: {0}").format(self.theProject.projName)
-        )
+        self.projName = QLabel("Working Title: %s" % self.theProject.projName)
         workFont = self.projName.font()
         workFont.setPointSizeF(0.8*fPt)
         workFont.setItalic(True)
@@ -165,7 +162,7 @@ class GuiProjectDetailsMain(QWidget):
         self.projName.setAlignment(Qt.AlignHCenter)
         self.projName.setWordWrap(True)
 
-        self.bookAuthors = QLabel(self.tr("By {0}").format(self.theProject.getAuthors()))
+        self.bookAuthors = QLabel("By %s" % self.theProject.getAuthors())
         authFont = self.bookAuthors.font()
         authFont.setPointSizeF(1.2*fPt)
         self.bookAuthors.setFont(authFont)
@@ -178,20 +175,20 @@ class GuiProjectDetailsMain(QWidget):
         hCounts = self.theIndex.getNovelTitleCounts()
         nwCount = self.theIndex.getNovelWordCount()
 
-        self.wordCountLbl = QLabel("<b>%s:</b>" % self.tr("Words"))
+        self.wordCountLbl = QLabel("<b>Words:</b>")
         self.wordCountVal = QLabel(f"{nwCount:n}")
 
-        self.chapCountLbl = QLabel("<b>%s:</b>" % self.tr("Chapters"))
+        self.chapCountLbl = QLabel("<b>Chapters:</b>")
         self.chapCountVal = QLabel(f"{hCounts[2]:n}")
 
-        self.sceneCountLbl = QLabel("<b>%s:</b>" % self.tr("Scenes"))
+        self.sceneCountLbl = QLabel("<b>Scenes:</b>")
         self.sceneCountVal = QLabel(f"{hCounts[3]:n}")
 
-        self.revCountLbl = QLabel("<b>%s:</b>" % self.tr("Revisions"))
+        self.revCountLbl = QLabel("<b>Revisions:</b>")
         self.revCountVal = QLabel(f"{self.theProject.saveCount:n}")
 
         edTime = self.theProject.getCurrentEditTime()
-        self.editTimeLbl = QLabel("<b>%s:</b>" % self.tr("Editing Time"))
+        self.editTimeLbl = QLabel("<b>Editing Time:</b>")
         self.editTimeVal = QLabel(f"{edTime//3600:02d}:{edTime%3600//60:02d}")
 
         self.statsGrid = QGridLayout()
@@ -211,7 +208,7 @@ class GuiProjectDetailsMain(QWidget):
         # Meta
         # ====
 
-        self.projPathLbl = QLabel("<b>%s:</b>" % self.tr("Path"))
+        self.projPathLbl = QLabel("<b>Path:</b>")
         self.projPathVal = QLineEdit()
         self.projPathVal.setText(self.theProject.projPath)
         self.projPathVal.setReadOnly(True)
@@ -274,14 +271,7 @@ class GuiProjectDetailsContents(QWidget):
         self.tocTree.setIndentation(0)
         self.tocTree.setColumnCount(6)
         self.tocTree.setSelectionMode(QAbstractItemView.NoSelection)
-        self.tocTree.setHeaderLabels([
-            self.tr("Title"),
-            self.tr("Words"),
-            self.tr("Pages"),
-            self.tr("Page"),
-            self.tr("Progress"),
-            ""
-        ])
+        self.tocTree.setHeaderLabels(["Title", "Words", "Pages", "Page", "Progress", ""])
 
         treeHeadItem = self.tocTree.headerItem()
         treeHeadItem.setTextAlignment(self.C_WORDS, Qt.AlignRight)
@@ -314,16 +304,16 @@ class GuiProjectDetailsContents(QWidget):
         clearDouble  = self.optState.getInt("GuiProjectDetails", "clearDouble", True)
 
         wordsHelp = (
-            self.tr("Typical word count for a 5 by 8 inch book page with 11 pt font is 350.")
+            "Typical word count for a 5 by 8 inch book page with 11 pt font is 350."
         )
         offsetHelp = (
-            self.tr("Start counting page numbers from this page.")
+            "Start counting page numbers from this page."
         )
         dblHelp = (
-            self.tr("Assume a new chapter or partition always start on an odd numbered page.")
+            "Assume a new chapter or partition always start on an odd numbered page."
         )
 
-        self.wpLabel = QLabel(self.tr("Words per page"))
+        self.wpLabel = QLabel("Words per page")
         self.wpLabel.setToolTip(wordsHelp)
 
         self.wpValue = QSpinBox()
@@ -334,7 +324,7 @@ class GuiProjectDetailsContents(QWidget):
         self.wpValue.setToolTip(wordsHelp)
         self.wpValue.valueChanged.connect(self._populateTree)
 
-        self.poLabel = QLabel(self.tr("Count pages from"))
+        self.poLabel = QLabel("Count pages from")
         self.poLabel.setToolTip(offsetHelp)
 
         self.poValue = QSpinBox()
@@ -345,7 +335,7 @@ class GuiProjectDetailsContents(QWidget):
         self.poValue.setToolTip(offsetHelp)
         self.poValue.valueChanged.connect(self._populateTree)
 
-        self.dblLabel = QLabel(self.tr("Clear double pages"))
+        self.dblLabel = QLabel("Clear double pages")
         self.dblLabel.setToolTip(dblHelp)
 
         self.dblValue = QSwitch(self, 2*iPx, iPx)
@@ -368,7 +358,7 @@ class GuiProjectDetailsContents(QWidget):
         # ========
 
         self.outerBox = QVBoxLayout()
-        self.outerBox.addWidget(QLabel("<b>%s</b>" % self.tr("Table of Contents")))
+        self.outerBox.addWidget(QLabel("<b>Table of Contents</b>"))
         self.outerBox.addWidget(self.tocTree)
         self.outerBox.addLayout(self.optionsBox)
 
@@ -400,7 +390,7 @@ class GuiProjectDetailsContents(QWidget):
         """
         self._theToC = []
         self._theToC = self.theIndex.getTableOfContents(2)
-        self._theToC.append(("", 0, self.tr("END"), 0))
+        self._theToC.append(("", 0, "END", 0))
         return
 
     ##

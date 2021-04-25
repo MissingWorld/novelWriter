@@ -4,15 +4,15 @@
 Novel Projects
 **************
 
+A novelWriter project requires a dedicated folder for storing its files on the local file system.
+See :ref:`a_tech` for further details on how files are organised.
+
 A new project can be created from the :guilabel:`Project` menu by selecting
 :guilabel:`New Project`. This will open the :guilabel:`New Project Wizard` that will assist you in
-creating a barebone project suited to your needs. A novelWriter project requires a dedicated folder
-for storing its files on the local file system. See :ref:`a_tech` for further details on how files
-are organised.
+creating a barebone project suited to your needs.
 
 A list of recently opened projects is maintained, and displayed in the :guilabel:`Open Project`
-dialog. A project can be removed from this list by selecting it and pressing the :kbd:`Del` key or
-by clicking the :guilabel:`Remove` button.
+dialog. A project can be removed from this list by selecting it and pressing the :kbd:`Del` key.
 
 Project-specific settings are available in :guilabel:`Project Settings` in the :guilabel:`Project`
 menu. See further details below in the :ref:`a_proj_settings` section. Details about the project,
@@ -51,9 +51,8 @@ no restrictions are enforced by the application. You can use them however you wa
 :guilabel:`Characters`
    Character notes go in this root folder. These are especially important if one wants to use the
    Outline view to see which character appears where, and which part of the story is told from a
-   specific character's point-of-view or focusing on a particular character's storyline. Tags in
-   this folder can be referenced using the ``@pov`` keyword for point-of-view characters,
-   ``@focus`` for a focus character, or the ``@char`` keyword for any other characters.
+   specific character's point-of-view. Tags in this folder can be references using the ``@pov``
+   keyword for point-of-view characters, or the ``@char`` keyword for other characters.
 
 :guilabel:`Locations`
    The locations folder is for various scene locations that you want to track. Tags in this folder
@@ -98,7 +97,7 @@ referenced.
 
 Folders and root folders can only be deleted when they are empty. Recursive deletion is not
 supported. A document or a folder can be deleted from the :guilabel:`Project` menu, or by pressing
-:kbd:`Ctrl`:kbd:`Shift`:kbd:`Del`.
+:kbd:`Ctrl`:kbd:`Del`.
 
 
 .. _a_proj_roots_out:
@@ -108,9 +107,9 @@ Archived Documents (Outtakes)
 
 If you don't want to delete a document, or put it in the :guilabel:`Trash` folder where it may be
 deleted, but still want it out of your main project tree, you can create an :guilabel:`Outtakes`
-root folder from the :guilabel:`Project` menu. You are not allowed to move entire folders to this
-root folder, only documents. If you need folders in it to organise your documents, you can of
-course create new ones there.
+root folder from the :guilabel:`Project` menu. You are not allowed to move folders to this root
+folder, only documents. If you need folders in it to organise your documents, you can of course
+create new ones there.
 
 You can drag any document to this folder and preserve its settings. The document will always be
 excluded from the :guilabel:`Build Novel Project` builds. It is also removed from the project
@@ -180,7 +179,7 @@ documents.
 .. tip::
    You can use folders to sort your scene documents into chapters. You will still need to add a
    chapter document as the first item of your chapter folder, and the scene documents as the
-   following items. Another way to use folders is to make a folder for each act.
+   following items.
 
 
 .. _a_proj_files:
@@ -212,7 +211,7 @@ Word Counts
 A character, word and paragraph count is maintained for each document, as well as for each section
 of a document following a header. The word count, and change of words in the current session, is
 displayed in the footer of any document open in the editor, and all stats are shown in the details
-panel below the project tree for any document selected in the project or novel tree.
+panel below the project tree for any document selected in the project tree.
 
 The word counts are not updated in real time, but run in the background every five seconds for as
 long as the document is being actively edited.
@@ -264,8 +263,6 @@ other features to work. No other part of novelWriter accesses this information. 
 use these to indicate at what stage of completion each novel document is, or how important the
 content of a note is to the plot. You don't have to use them this way, that's just what they were
 intended for, but you can make them whatever you want.
-
-See also :ref:`a_ui_tree_status`.
 
 .. note::
    The status or importance level currently in use by one or more documents cannot be deleted, but
@@ -328,8 +325,3 @@ A tool to view the content of this file is available in the :guilabel:`Tools` me
 The tool will show a list of all your sessions, and a set of filters to apply to it. You can also
 export the filtered data to a JSON file or to a CSV file that can be opened by a spreadsheet
 application like for instance Libre Office Calc.
-
-As of version 1.2, the log file also stores how much of the session time was spent idle. The
-definition of idle here is that the novelWriter main window loses focus, and the user hasn't made
-any changes to the currently open document in five minutes. The number of minutes can be altered in
-:guilabel:`Preferences`.

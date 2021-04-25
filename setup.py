@@ -36,30 +36,6 @@ OS_WIN    = 2
 OS_DARWIN = 3
 
 # =============================================================================================== #
-#  Utilities
-# =============================================================================================== #
-
-def extractVersion():
-    """Extract the novelWriter version number without having to import
-    anything else from the main package.
-    """
-    def getValue(theString):
-        theBits = theString.partition("=")
-        return theBits[2].strip().strip('"')
-
-    numVers = "Unknown"
-    hexVers = "Unknown"
-    initFile = os.path.join("nw", "__init__.py")
-    with open(initFile, mode="r") as inFile:
-        for aLine in inFile:
-            if aLine.startswith("__version__"):
-                numVers = getValue((aLine))
-            if aLine.startswith("__hexversion__"):
-                hexVers = getValue((aLine))
-
-    return numVers, hexVers
-
-# =============================================================================================== #
 #  General
 # =============================================================================================== #
 
@@ -211,32 +187,6 @@ def buildQtDocs():
     return
 
 ##
-#  Qt Linguist QM Builder (qtlrelease)
-##
-
-def buildQtI18n():
-    """Build the lang.qm files for Qt Linguist.
-    """
-    try:
-        subprocess.call(["lrelease", "-verbose", "novelWriter.pro"])
-    except Exception as e:
-        print("QtI18n Release Error:")
-        print(str(e))
-
-##
-#  Qt Linguist TS Builder (qtlupdate)
-##
-
-def buildQtI18nTS():
-    """Build the lang.ts files for Qt Linguist.
-    """
-    try:
-        subprocess.call(["pylupdate5", "-verbose", "-noobsolete", "novelWriter.pro"])
-    except Exception as e:
-        print("QtI18n Release Error:")
-        print(str(e))
-
-##
 #  Sample Project ZIP File Builder (sample)
 ##
 
@@ -287,10 +237,8 @@ def buildSampleZip():
 def makeMinimalPackage(targetOS):
     """Pack the core source file in a single zip file.
     """
+    from nw import __version__
     from zipfile import ZipFile, ZIP_DEFLATED
-
-    # Get the version
-    numVers, _ = extractVersion()
 
     # Make sample.zip first
     try:
@@ -300,36 +248,24 @@ def makeMinimalPackage(targetOS):
         print(str(e))
         sys.exit(1)
 
-    # Make translation files
-    try:
-        buildQtI18n()
-    except Exception as e:
-        print("Failed with error:")
-        print(str(e))
-        sys.exit(1)
-
     print("")
     print("Building Minimal ZIP File")
     print("=========================")
+    print("")
 
     if not os.path.isdir("dist"):
         os.mkdir("dist")
 
     if targetOS == OS_LINUX:
         targName = "-linux"
-        print("Target OS: Linux")
     elif targetOS == OS_DARWIN:
         targName = "-darwin"
-        print("Target OS: Darwin")
     elif targetOS == OS_WIN:
         targName = "-win"
-        print("Target OS: Windows")
     else:
         targName = ""
-    print("")
 
-    zipFile = f"novelWriter-{numVers}-minimal{targName}.zip"
-    outFile = os.path.join("dist", zipFile)
+    outFile = os.path.join("dist", f"novelWriter-{__version__}-minimal{targName}.zip")
     if os.path.isfile(outFile):
         os.unlink(outFile)
 
@@ -355,22 +291,11 @@ def makeMinimalPackage(targetOS):
                     continue
                 zipObj.write(os.path.join(nRoot, aFile))
 
-        for aFile in os.listdir("i18n"):
-            i18File = os.path.join("i18n", aFile)
-            if not os.path.isfile(i18File):
-                continue
-
-            if i18File.endswith((".json", ".qm")):
-                zipObj.write(i18File)
-                print("Adding File: %s" % i18File)
-
         if targetOS == OS_WIN:
             zipObj.write("novelWriter.py", "novelWriter.pyw")
             print("Adding File: novelWriter.pyw")
-            zipObj.write(os.path.join("setup", "windows_install.bat"), "windows_install.bat")
-            print("Adding File: windows_install.bat")
-            zipObj.write(os.path.join("setup", "windows_uninstall.bat"), "windows_uninstall.bat")
-            print("Adding File: windows_uninstall.bat")
+            zipObj.write("setup_windows.bat")
+            print("Adding File: setup_windows.bat")
         else:
             zipObj.write("novelWriter.py")
             print("Adding File: novelWriter.py")
@@ -381,17 +306,7 @@ def makeMinimalPackage(targetOS):
             zipObj.write(aFile)
 
     print("")
-    print("Created File: %s" % outFile)
-
-    try:
-        shaFile = open(outFile+".sha256", mode="w")
-        subprocess.call(["sha256sum", zipFile], stdout=shaFile, cwd="dist")
-        shaFile.close()
-        print("SHA256 Sum:   %s" % (outFile+".sha256"))
-    except Exception as e:
-        print("Could not generate sha256 file")
-        print(str(e))
-
+    print("Built file: %s" % outFile)
     print("")
 
     return
@@ -651,6 +566,14 @@ def xdgInstall():
     else:
         print(f"Error {exCode}: Could not install menu desktop file")
 
+    exCode = subprocess.call(
+        ["xdg-desktop-icon", "install", "--novendor", "./novelwriter.desktop"]
+    )
+    if exCode == 0:
+        print("Installed icon desktop file")
+    else:
+        print(f"Error {exCode}: Could not install icon desktop file")
+
     print("")
 
     # Install MimeType
@@ -709,10 +632,6 @@ def xdgInstall():
     else:
         print(f"Error {exCode}: Could not update icon cache")
 
-    # Clean up
-    if os.path.isfile("./novelwriter.desktop"):
-        os.unlink("./novelwriter.desktop")
-
     print("")
     print("Done!")
     print("")
@@ -720,71 +639,14 @@ def xdgInstall():
     return
 
 ##
-#  XDG Uninstallation (xdg-uninstall)
-##
-
-def xdgUninstall():
-    """Will attempt to uninstall icons and make a launcher.
-    """
-    print("")
-    print("XDG Uninstall")
-    print("=============")
-    print("")
-
-    exCode = subprocess.call(
-        ["xdg-desktop-menu", "uninstall", "novelwriter.desktop"]
-    )
-    if exCode == 0:
-        print("Uninstalled menu desktop file")
-    else:
-        print(f"Error {exCode}: Could not uninstall menu desktop file")
-
-    sizeArr = ["16", "22", "24", "32", "48", "64", "96", "128", "256", "512"]
-
-    # App Icon
-    for aSize in sizeArr:
-        exCode = subprocess.call([
-            "xdg-icon-resource", "uninstall", "--noupdate",
-            "--context", "apps", "--size", aSize, "novelwriter"
-        ])
-        if exCode == 0:
-            print(f"Uninstalled app icon size {aSize}")
-        else:
-            print(f"Error {exCode}: Could not uninstall app icon size {aSize}")
-
-    # Mimetype
-    for aSize in sizeArr:
-        exCode = subprocess.call([
-            "xdg-icon-resource", "uninstall", "--noupdate",
-            "--context", "mimetypes", "--size", aSize,
-            "application-x-novelwriter-project"
-        ])
-        if exCode == 0:
-            print(f"Uninstalled mime icon size {aSize}")
-        else:
-            print(f"Error {exCode}: Could not uninstall mime icon size {aSize}")
-
-    # Update Cache
-    exCode = subprocess.call(["xdg-icon-resource", "forceupdate"])
-    if exCode == 0:
-        print("Updated icon cache")
-    else:
-        print(f"Error {exCode}: Could not update icon cache")
-
-    print("")
-    print("Done!")
-    print("")
-
-    return
-
-##
-#  WIN Installation (win-install)
+#  WIN Installation (win-install, launcher)
 ##
 
 def winInstall():
     """Will attempt to install icons and make a launcher for Windows.
     """
     import winreg
+    from nw import __version__, __hexversion__
     try:
         import win32com.client
     except ImportError:
@@ -800,14 +662,13 @@ def winInstall():
     print("===============")
     print("")
 
-    numVers, hexVers = extractVersion()
-    nwTesting = not hexVers[-2] == "f"
+    nwTesting = not __hexversion__[-2] == "f"
     wShell = win32com.client.Dispatch("WScript.Shell")
 
     if nwTesting:
-        linkName = "novelWriter Testing %s.lnk" % numVers
+        linkName = "novelWriter Testing %s.lnk" % __version__
     else:
-        linkName = "novelWriter %s.lnk" % numVers
+        linkName = "novelWriter %s.lnk" % __version__
 
     desktopDir = wShell.SpecialFolders("Desktop")
     desktopIcon = os.path.join(desktopDir, linkName)
@@ -822,9 +683,6 @@ def winInstall():
     targetDir = os.path.abspath(os.path.dirname(__file__))
     targetPy = os.path.join(targetDir, "novelWriter.pyw")
     targetIcon = os.path.join(targetDir, "nw", "assets", "icons", "novelwriter.ico")
-
-    if not os.path.isfile(targetPy):
-        shutil.copy2(os.path.join(targetDir, "novelWriter.py"), targetPy)
 
     print("Collecting Info ...")
     print("Desktop Folder:    %s" % desktopDir)
@@ -901,92 +759,6 @@ def winInstall():
 
     return
 
-##
-#  WIN Uninstallation (win-uninstall)
-##
-
-def winUninstall():
-    """Will attempt to uninstall icons previously installed.
-    """
-    import winreg
-    try:
-        import win32com.client
-    except ImportError:
-        print(
-            "ERROR: Package 'pywin32' is missing on this system.\n"
-            "       Please run 'pip install --user pywin32' to install it."
-        )
-        sys.exit(1)
-
-    print("")
-    print("Windows Uninstall")
-    print("=================")
-    print("")
-
-    numVers, hexVers = extractVersion()
-    nwTesting = not hexVers[-2] == "f"
-    wShell = win32com.client.Dispatch("WScript.Shell")
-
-    if nwTesting:
-        linkName = "novelWriter Testing %s.lnk" % numVers
-    else:
-        linkName = "novelWriter %s.lnk" % numVers
-
-    desktopDir = wShell.SpecialFolders("Desktop")
-    desktopIcon = os.path.join(desktopDir, linkName)
-
-    startMenuDir = wShell.SpecialFolders("StartMenu")
-    startMenuProg = os.path.join(startMenuDir, "Programs", "novelWriter")
-    startMenuIcon = os.path.join(startMenuProg, linkName)
-
-    print("Deleting Links ...")
-    if os.path.isfile(desktopIcon):
-        os.unlink(desktopIcon)
-        print("Deleted: %s" % desktopIcon)
-    else:
-        print("Not Found: %s" % desktopIcon)
-
-    if os.path.isfile(startMenuIcon):
-        os.unlink(startMenuIcon)
-        print("Deleted: %s" % startMenuIcon)
-    else:
-        print("Not Found: %s" % startMenuIcon)
-
-    if os.path.isdir(startMenuProg):
-        if not os.listdir(startMenuProg):
-            os.rmdir(startMenuProg)
-            print("Deleted: %s" % startMenuProg)
-        else:
-            print("Not Empty: %s" % startMenuProg)
-
-    print("")
-    print("Removing registry keys ...")
-
-    theKeys = [
-        r"Software\Classes\novelWriterProject.nwx\shell\open\command",
-        r"Software\Classes\novelWriterProject.nwx\shell\open",
-        r"Software\Classes\novelWriterProject.nwx\shell",
-        r"Software\Classes\novelWriterProject.nwx\DefaultIcon",
-        r"Software\Classes\novelWriterProject.nwx",
-        r"Software\Classes\.nwx\OpenWithProgids",
-        r"Software\Classes\.nwx",
-        r"Software\Classes\Applications\novelWriter.pyw\SupportedTypes",
-        r"Software\Classes\Applications\novelWriter.pyw",
-    ]
-
-    for aKey in theKeys:
-        try:
-            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, aKey)
-            print("Deleted: HKEY_CURRENT_USER\\%s" % aKey)
-        except WindowsError:
-            print("Not Found: HKEY_CURRENT_USER\\%s" % aKey)
-
-    print("")
-    print("Done!")
-    print("")
-
-    return
-
 # =============================================================================================== #
 #  Windows Installers
 # =============================================================================================== #
@@ -1008,8 +780,8 @@ def innoSetup():
     with open(os.path.join("setup", "win_setup_pyz.iss"), mode="r") as inFile:
         issData = inFile.read()
 
-    numVers, _ = extractVersion()
-    issData = issData.replace(r"%%version%%", numVers)
+    import nw # noqa: E402
+    issData = issData.replace(r"%%version%%", nw.__version__)
     issData = issData.replace(r"%%dir%%", os.getcwd())
 
     with open("setup.iss", mode="w+") as outFile:
@@ -1056,61 +828,47 @@ if __name__ == "__main__":
     else:
         targetOS = hostOS
 
-    helpMsg = [
-        "",
-        "novelWriter Setup Tool",
-        "======================",
-        "",
-        "This tool provides setup and build commands for installing or distibuting",
-        "novelWriter as a package on Linux, Mac and Windows. The available options",
-        "are as follows:",
-        "",
-        "Some of the commands can be targeted towards a different OS than the host OS.",
-        "To target the command, add one of '--target-linux', '--target-darwin' or",
-        "'--target-win'.",
-        "",
-        "General:",
-        "",
-        "    help           Print the help message.",
-        "    pip            Install all package dependencies for novelWriter using pip.",
-        "    clean          Will attempt to delete the 'build' and 'dist' folders.",
-        "",
-        "Additional Builds:",
-        "",
-        "    qthelp         Build the help documentation for use with the Qt Assistant.",
-        "    qtlupdate      Update the translation files for internationalisation.",
-        "    qtlrelease     Build the language files for internationalisation.",
-        "    sample         Build the sample project zip file and add it to assets.",
-        "",
-        "Python Packaging:",
-        "",
-        "    minimal-zip    Creates a minimal zip file of the core application without",
-        "                   all the other source files. Defaults to tailor the zip file",
-        "                   for the current OS, but accepts a target OS flag to build",
-        "                   for another OS.",
-        "    pack-pyz       Creates a .pyz package in a folder with all dependencies",
-        "                   using the zipapp tool. On Windows, python embeddable is",
-        "                   added to the folder.",
-        "    setup-pyz      Build a Windows executable installer from a zipapp package",
-        "                   using Inno Setup. Must run 'pack-pyz' first.",
-        "",
-        "System Install:",
-        "",
-        "    install        Installs novelWriter to the system's Python install",
-        "                   location. Run as root or with sudo for system-wide install,",
-        "                   or as user for single user install.",
-        "    xdg-install    Install launcher and icons for freedesktop systems. Run as",
-        "                   root or with sudo for system-wide install, or as user for",
-        "                   single user install.",
-        "    xdg-uninstall  Remove the launcher and icons for the current system as",
-        "                   installed by the 'xdg-install' command.",
-        "    win-install    Install desktop icon, start menu icon, and registry entries",
-        "                   for file association with .nwx files for Windows systems.",
-        "    win-uninstall  Remove desktop icon, start menu icon, and registry keys,",
-        "                   for the current system. Note that it only removes icons for",
-        "                   the version number of the package the command is run from.",
-        "",
-    ]
+    helpMsg = (
+        "\n"
+        "novelWriter Setup Tool\n"
+        "======================\n"
+        "\n"
+        "This tool provides setup and build commands for installing or distibuting novelWriter\n"
+        "as a package on Linux, Mac and Windows. The available options are as follows:\n"
+        "\n"
+        "Some of the commands can be targeted towards a different OS than the host OS. To target\n"
+        "the command, add one of '--target-linux', '--target-darwin' or '--target-win'.\n"
+        "\n"
+        "General:\n"
+        "\n"
+        "    help         Print the help message.\n"
+        "    pip          Install all package dependencies for novelWriter using pip.\n"
+        "    clean        Will attempt to delete the 'build' and 'dist' folders.\n"
+        "\n"
+        "Additional Builds:\n"
+        "\n"
+        "    qthelp       Build the help documentation for use with the Qt Assistant. Run before\n"
+        "                 install to have local help enable in the the installed version.\n"
+        "    sample       Build the sample project as a zip file. Run before install to enable\n"
+        "                 creating sample projects in the in-app New Project Wizard.\n"
+        "\n"
+        "Python Packaging:\n"
+        "\n"
+        "    minimal-zip  Creates a minimal zip file of the core application without all the\n"
+        "                 other source files. Accepts a target OS flag.\n"
+        "    pack-pyz     Creates a pyz package in a folder with all dependencies using the\n"
+        "                 zipapp tool. On Windows, python embeddable is added to the folder.\n"
+        "    setup-pyz    Build a Windows installer from a zipapp package using Inno Setup.\n"
+        "\n"
+        "System Install:\n"
+        "\n"
+        "    install      Installs novelWriter to the system's Python install location. Run as \n"
+        "                 root or with sudo for system-wide install, or as user for single user \n"
+        "                 install.\n"
+        "    xdg-install  Install launcher and icons for freedesktop systems. Run as root or \n"
+        "                 with sudo for system-wide install, or as user for single user install.\n"
+        "    win-install  Install desktop and start menu icons for Windows systems.\n"
+    )
 
     # Flags and Variables
     makeSetupPyz = False
@@ -1122,14 +880,7 @@ if __name__ == "__main__":
 
     if "help" in sys.argv:
         sys.argv.remove("help")
-        print("\n".join(helpMsg))
-        sys.exit(0)
-
-    if "version" in sys.argv:
-        sys.argv.remove("version")
-        numVers, hexVers = extractVersion()
-        print("Semantic Version: %s" % numVers)
-        print("Hexadecimal Version: %s" % hexVers)
+        print(helpMsg)
         sys.exit(0)
 
     if "pip" in sys.argv:
@@ -1146,14 +897,6 @@ if __name__ == "__main__":
     if "qthelp" in sys.argv:
         sys.argv.remove("qthelp")
         buildQtDocs()
-
-    if "qtlrelease" in sys.argv:
-        sys.argv.remove("qtlrelease")
-        buildQtI18n()
-
-    if "qtlupdate" in sys.argv:
-        sys.argv.remove("qtlupdate")
-        buildQtI18nTS()
 
     if "sample" in sys.argv:
         sys.argv.remove("sample")
@@ -1175,6 +918,11 @@ if __name__ == "__main__":
     # General Installers
     # ==================
 
+    if "launcher" in sys.argv:
+        sys.argv.remove("launcher")
+        print("The 'launcher' command has been replaced by 'xdg-install'.")
+        sys.exit(1)
+
     if "xdg-install" in sys.argv:
         sys.argv.remove("xdg-install")
         if hostOS == OS_WIN:
@@ -1183,28 +931,12 @@ if __name__ == "__main__":
         else:
             xdgInstall()
 
-    if "xdg-uninstall" in sys.argv:
-        sys.argv.remove("xdg-uninstall")
-        if hostOS == OS_WIN:
-            print("ERROR: Command 'xdg-uninstall' cannot be used on Windows")
-            sys.exit(1)
-        else:
-            xdgUninstall()
-
     if "win-install" in sys.argv:
         sys.argv.remove("win-install")
         if hostOS == OS_WIN:
             winInstall()
         else:
             print("ERROR: Command 'win-install' can only be used on Windows")
-            sys.exit(1)
-
-    if "win-uninstall" in sys.argv:
-        sys.argv.remove("win-uninstall")
-        if hostOS == OS_WIN:
-            winUninstall()
-        else:
-            print("ERROR: Command 'win-uninstall' can only be used on Windows")
             sys.exit(1)
 
     # Windows Setup Installer

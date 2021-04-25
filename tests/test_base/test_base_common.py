@@ -24,11 +24,11 @@ import time
 import pytest
 
 from nw.common import (
-    checkString, checkBool, checkInt, formatInt, transferCase,
+    checkString, checkBool, checkInt, colRange, formatInt, transferCase,
     fuzzyTime, checkHandle, formatTimeStamp, formatTime, hexToInt,
-    makeFileNameSafe, isHandle, isTitleTag, isItemClass, isItemType,
-    isItemLayout, numberToRoman
+    makeFileNameSafe
 )
+from tools import cmpList
 
 @pytest.mark.base
 def testBaseCommon_CheckString():
@@ -89,95 +89,6 @@ def testBaseCommon_CheckHandle():
 # END Test testBaseCommon_CheckHandle
 
 @pytest.mark.base
-def testBaseCommon_IsHandle():
-    """Test the isHandle function.
-    """
-    assert isHandle("47666c91c7ccf")
-
-    assert not isHandle("47666C91C7CCF")
-    assert not isHandle("h7666c91c7ccf")
-    assert not isHandle("None")
-    assert not isHandle(None)
-    assert not isHandle("STUFF")
-
-# END Test testBaseCommon_IsHandle
-
-@pytest.mark.base
-def testBaseCommon_IsTitleTag():
-    """Test the isItemClass function.
-    """
-    assert isTitleTag("T123456")
-
-    assert not isTitleTag("t123456")
-    assert not isTitleTag("S123456")
-    assert not isTitleTag("T12345A")
-    assert not isTitleTag("T1234567")
-
-    assert not isTitleTag("None")
-    assert not isTitleTag(None)
-    assert not isTitleTag("STUFF")
-
-# END Test testBaseCommon_IsTitleTag
-
-@pytest.mark.base
-def testBaseCommon_IsItemClass():
-    """Test the isItemClass function.
-    """
-    assert isItemClass("NO_CLASS")
-    assert isItemClass("NOVEL")
-    assert isItemClass("PLOT")
-    assert isItemClass("CHARACTER")
-    assert isItemClass("WORLD")
-    assert isItemClass("TIMELINE")
-    assert isItemClass("OBJECT")
-    assert isItemClass("ENTITY")
-    assert isItemClass("CUSTOM")
-    assert isItemClass("ARCHIVE")
-    assert isItemClass("TRASH")
-
-    assert not isItemClass("None")
-    assert not isItemClass(None)
-    assert not isItemClass("STUFF")
-
-# END Test testBaseCommon_IsItemClass
-
-@pytest.mark.base
-def testBaseCommon_IsItemType():
-    """Test the isItemType function.
-    """
-    assert isItemType("NO_TYPE")
-    assert isItemType("ROOT")
-    assert isItemType("FOLDER")
-    assert isItemType("FILE")
-    assert isItemType("TRASH")
-
-    assert not isItemType("None")
-    assert not isItemType(None)
-    assert not isItemType("STUFF")
-
-# END Test testBaseCommon_IsItemType
-
-@pytest.mark.base
-def testBaseCommon_IsItemLayout():
-    """Test the isItemLayout function.
-    """
-    assert isItemLayout("NO_LAYOUT")
-    assert isItemLayout("TITLE")
-    assert isItemLayout("BOOK")
-    assert isItemLayout("PAGE")
-    assert isItemLayout("PARTITION")
-    assert isItemLayout("UNNUMBERED")
-    assert isItemLayout("CHAPTER")
-    assert isItemLayout("SCENE")
-    assert isItemLayout("NOTE")
-
-    assert not isItemLayout("None")
-    assert not isItemLayout(None)
-    assert not isItemLayout("STUFF")
-
-# END Test testBaseCommon_IsItemLayout
-
-@pytest.mark.base
 def testBaseCommon_HexToInt():
     """Test the hexToInt function.
     """
@@ -189,6 +100,34 @@ def testBaseCommon_HexToInt():
     assert hexToInt("0xffffq", 12) == 12
 
 # END Test testBaseCommon_HexToInt
+
+@pytest.mark.base
+def testBaseCommon_ColRange():
+    """Test the colRange function.
+    """
+    assert colRange([0, 0], [0, 0], 0) is None
+    assert cmpList(
+        colRange([200, 50, 0], [50, 200, 0], 1),
+        [200, 50, 0]
+    )
+    assert cmpList(
+        colRange([200, 50, 0], [50, 200, 0], 2),
+        [[200, 50, 0], [50, 200, 0]]
+    )
+    assert cmpList(
+        colRange([200, 50, 0], [50, 200, 0], 3),
+        [[200, 50, 0], [125, 125, 0], [50, 200, 0]]
+    )
+    assert cmpList(
+        colRange([200, 50, 0], [50, 200, 0], 4),
+        [[200, 50, 0], [150, 100, 0], [100, 150, 0], [50, 200, 0]]
+    )
+    assert cmpList(
+        colRange([200, 50, 0], [50, 200, 0], 5),
+        [[200, 50, 0], [162, 87, 0], [124, 124, 0], [86, 161, 0], [50, 200, 0]]
+    )
+
+# END Test testBaseCommon_ColRange
 
 @pytest.mark.base
 def testBaseCommon_FormatTimeStamp():
@@ -296,30 +235,3 @@ def testBaseCommon_MakeFileNameSafe():
     assert makeFileNameSafe("aaaa bbbb") == "aaaa bbbb"
 
 # END Test testBaseCommon_MakeFileNameSafe
-
-@pytest.mark.core
-def testBaseCommon_RomanNumbers():
-    """Test conversion of integers to Roman numbers.
-    """
-    assert numberToRoman(None, False) == "NAN"
-    assert numberToRoman(0, False) == "OOR"
-    assert numberToRoman(1, False) == "I"
-    assert numberToRoman(2, False) == "II"
-    assert numberToRoman(3, False) == "III"
-    assert numberToRoman(4, False) == "IV"
-    assert numberToRoman(5, False) == "V"
-    assert numberToRoman(6, False) == "VI"
-    assert numberToRoman(7, False) == "VII"
-    assert numberToRoman(8, False) == "VIII"
-    assert numberToRoman(9, False) == "IX"
-    assert numberToRoman(10, False) == "X"
-    assert numberToRoman(14, False) == "XIV"
-    assert numberToRoman(42, False) == "XLII"
-    assert numberToRoman(99, False) == "XCIX"
-    assert numberToRoman(142, False) == "CXLII"
-    assert numberToRoman(542, False) == "DXLII"
-    assert numberToRoman(999, False) == "CMXCIX"
-    assert numberToRoman(2010, False) == "MMX"
-    assert numberToRoman(999, True) == "cmxcix"
-
-# END Test testBaseCommon_RomanNumbers
